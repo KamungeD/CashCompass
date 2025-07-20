@@ -1,5 +1,6 @@
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
+import { debounce, throttle, memoize } from './performance';
 
 /**
  * Utility function to merge Tailwind CSS classes
@@ -95,21 +96,6 @@ export const generateRandomColor = () => {
 };
 
 /**
- * Debounce function
- */
-export const debounce = (func, wait) => {
-  let timeout;
-  return function executedFunction(...args) {
-    const later = () => {
-      clearTimeout(timeout);
-      func(...args);
-    };
-    clearTimeout(timeout);
-    timeout = setTimeout(later, wait);
-  };
-};
-
-/**
  * Sleep/delay function
  */
 export const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
@@ -147,3 +133,6 @@ export const groupBy = (array, key) => {
     return result;
   }, {});
 };
+
+// Re-export performance utilities for convenience
+export { debounce, throttle, memoize };

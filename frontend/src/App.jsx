@@ -1,12 +1,18 @@
-import React from 'react';
+import React, { Suspense, lazy } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { ThemeProvider } from './context/ThemeContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { LoadingSpinner } from './components/common';
 import Navbar from './components/layout/Navbar/Navbar';
-import { LoginPage, RegisterPage } from './pages/Auth';
-import { DashboardPage } from './pages/Dashboard';
+
+// Lazy load components for better performance
+const LoginPage = lazy(() => import('./pages/Auth/LoginPage'));
+const RegisterPage = lazy(() => import('./pages/Auth/RegisterPage'));
+const DashboardPage = lazy(() => import('./pages/Dashboard/DashboardPage'));
+const TransactionsPage = lazy(() => import('./pages/Transactions/TransactionsPage'));
+const BudgetsPage = lazy(() => import('./pages/Budgets/BudgetsPage'));
+const AnalyticsPage = lazy(() => import('./pages/Analytics/AnalyticsPage'));
 
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
@@ -35,114 +41,90 @@ const AppRoutes = () => {
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-200">
       <Navbar />
-      <Routes>
-        {/* Public Routes */}
-        <Route 
-          path="/login" 
-          element={
-            <PublicRoute>
-              <LoginPage />
-            </PublicRoute>
-          } 
-        />
-        <Route 
-          path="/register" 
-          element={
-            <PublicRoute>
-              <RegisterPage />
-            </PublicRoute>
-          } 
-        />
-        
-        {/* Protected Routes */}
-        <Route 
-          path="/dashboard" 
-          element={
-            <ProtectedRoute>
-              <DashboardPage />
-            </ProtectedRoute>
-          } 
-        />
-        
-        {/* Placeholder routes for future pages */}
-        <Route 
-          path="/transactions" 
-          element={
-            <ProtectedRoute>
+      <Suspense fallback={<LoadingSpinner fullScreen message="Loading page..." />}>
+        <Routes>
+          {/* Public Routes */}
+          <Route 
+            path="/login" 
+            element={
+              <PublicRoute>
+                <LoginPage />
+              </PublicRoute>
+            } 
+          />
+          <Route 
+            path="/register" 
+            element={
+              <PublicRoute>
+                <RegisterPage />
+              </PublicRoute>
+            } 
+          />
+          
+          {/* Protected Routes */}
+          <Route 
+            path="/dashboard" 
+            element={
+              <ProtectedRoute>
+                <DashboardPage />
+              </ProtectedRoute>
+            } 
+          />
+          
+          <Route 
+            path="/transactions" 
+            element={
+              <ProtectedRoute>
+                <TransactionsPage />
+              </ProtectedRoute>
+            } 
+          />
+          
+          <Route 
+            path="/budgets" 
+            element={
+              <ProtectedRoute>
+                <BudgetsPage />
+              </ProtectedRoute>
+            } 
+          />
+          
+          <Route 
+            path="/analytics" 
+            element={
+              <ProtectedRoute>
+                <AnalyticsPage />
+              </ProtectedRoute>
+            } 
+          />
+          
+          {/* Default redirect */}
+          <Route path="/" element={<Navigate to="/dashboard" replace />} />
+          
+          {/* 404 Page */}
+          <Route 
+            path="*" 
+            element={
               <div className="min-h-screen flex items-center justify-center">
                 <div className="text-center">
-                  <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-4">
-                    Transactions Page
+                  <h1 className="text-4xl font-bold text-gray-900 dark:text-gray-100 mb-4">
+                    404
                   </h1>
-                  <p className="text-gray-600 dark:text-gray-400">
-                    Coming soon in the next development phase
+                  <p className="text-gray-600 dark:text-gray-400 mb-4">
+                    Page not found
                   </p>
+                  <button
+                    onClick={() => window.history.back()}
+                    className="text-blue-600 hover:text-blue-700 dark:text-blue-400"
+                  >
+                    Go Back
+                  </button>
                 </div>
               </div>
-            </ProtectedRoute>
-          } 
-        />
-        <Route 
-          path="/analytics" 
-          element={
-            <ProtectedRoute>
-              <div className="min-h-screen flex items-center justify-center">
-                <div className="text-center">
-                  <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-4">
-                    Analytics Page
-                  </h1>
-                  <p className="text-gray-600 dark:text-gray-400">
-                    Coming soon in the next development phase
-                  </p>
-                </div>
-              </div>
-            </ProtectedRoute>
-          } 
-        />
-        <Route 
-          path="/budgets" 
-          element={
-            <ProtectedRoute>
-              <div className="min-h-screen flex items-center justify-center">
-                <div className="text-center">
-                  <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-4">
-                    Budgets Page
-                  </h1>
-                  <p className="text-gray-600 dark:text-gray-400">
-                    Coming soon in the next development phase
-                  </p>
-                </div>
-              </div>
-            </ProtectedRoute>
-          } 
-        />
-        
-        {/* Default redirect */}
-        <Route path="/" element={<Navigate to="/dashboard" replace />} />
-        
-        {/* 404 Page */}
-        <Route 
-          path="*" 
-          element={
-            <div className="min-h-screen flex items-center justify-center">
-              <div className="text-center">
-                <h1 className="text-4xl font-bold text-gray-900 dark:text-gray-100 mb-4">
-                  404
-                </h1>
-                <p className="text-gray-600 dark:text-gray-400 mb-8">
-                  Page not found
-                </p>
-                <button 
-                  onClick={() => window.history.back()}
-                  className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700"
-                >
-                  Go Back
-                </button>
-              </div>
-            </div>
-          } 
-        />
-      </Routes>
+            } 
+          />
+        </Routes>
+      </Suspense>
     </div>
   );
 };
