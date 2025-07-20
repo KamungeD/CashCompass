@@ -28,7 +28,7 @@ export const AuthProvider = ({ children }) => {
           api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
           
           // Validate token by fetching user profile
-          const response = await api.get('/api/v1/auth/profile');
+          const response = await api.get('/auth/profile');
           setUser(response.data.data.user);
           setIsAuthenticated(true);
         } catch (error) {
@@ -46,7 +46,7 @@ export const AuthProvider = ({ children }) => {
   const login = async (credentials) => {
     try {
       setLoading(true);
-      const response = await api.post('/api/v1/auth/login', credentials);
+      const response = await api.post('/auth/login', credentials);
       const { user, token } = response.data.data;
 
       // Store token and set auth header
@@ -72,7 +72,7 @@ export const AuthProvider = ({ children }) => {
   const register = async (userData) => {
     try {
       setLoading(true);
-      const response = await api.post('/api/v1/auth/register', userData);
+      const response = await api.post('/auth/register', userData);
       const { user, token } = response.data.data;
 
       // Store token and set auth header
@@ -97,7 +97,7 @@ export const AuthProvider = ({ children }) => {
 
   const logout = async () => {
     try {
-      await api.post('/api/v1/auth/logout');
+      await api.post('/auth/logout');
     } catch (error) {
       console.error('Logout error:', error);
     } finally {
@@ -114,7 +114,7 @@ export const AuthProvider = ({ children }) => {
   const updateProfile = async (profileData) => {
     try {
       setLoading(true);
-      const response = await api.put('/api/v1/auth/profile', profileData);
+            const response = await api.put('/auth/profile', userData);
       setUser(response.data.data.user);
       toast.success('Profile updated successfully');
       return { success: true };
