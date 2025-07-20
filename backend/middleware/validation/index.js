@@ -264,15 +264,27 @@ const transactionValidation = {
     body('category')
       .notEmpty()
       .withMessage('Category is required')
-      .isMongoId()
-      .withMessage('Invalid category ID'),
+      .custom((value) => {
+        // Allow both ObjectId and string category names
+        if (typeof value === 'string') {
+          // If it looks like an ObjectId, validate it as such
+          if (value.match(/^[0-9a-fA-F]{24}$/)) {
+            return true; // Valid ObjectId format
+          }
+          // If it's a string, ensure it's a valid category name
+          if (value.length >= 2 && value.length <= 50) {
+            return true; // Valid category name
+          }
+          throw new Error('Category name must be between 2 and 50 characters');
+        }
+        throw new Error('Category must be a valid ID or name');
+      }),
     
     body('description')
+      .optional()
       .trim()
-      .notEmpty()
-      .withMessage('Description is required')
       .isLength({ min: 1, max: 500 })
-      .withMessage('Description must be between 1 and 500 characters'),
+      .withMessage('Description must be between 1 and 500 characters when provided'),
     
     body('notes')
       .optional()

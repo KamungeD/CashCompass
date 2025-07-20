@@ -47,22 +47,38 @@ const TransactionsPage = () => {
   const fetchTransactions = async () => {
     try {
       setLoading(true);
-      const params = {
-        page: pagination.page,
-        limit: pagination.limit,
-        ...filters
-      };
+      const response = await transactionAPI.getAll(pagination.page, pagination.limit, filters);
       
-      const response = await transactionAPI.getTransactions(params);
-      setTransactions(response.data.data);
+      // Ensure we have the correct data structure
+      const responseData = response.data;
+      let transactionsData = [];
+      let totalCount = 0;
+      let totalPagesCount = 0;
+
+      if (responseData && responseData.data) {
+        // The backend returns: { success: true, data: { transactions: [], pagination: {} } }
+        if (Array.isArray(responseData.data.transactions)) {
+          transactionsData = responseData.data.transactions;
+        }
+        
+        // Extract pagination info
+        if (responseData.data.pagination) {
+          totalCount = responseData.data.pagination.total || 0;
+          totalPagesCount = responseData.data.pagination.pages || 0;
+        }
+      }
+
+      setTransactions(transactionsData);
       setPagination(prev => ({
         ...prev,
-        total: response.data.total,
-        totalPages: response.data.totalPages
+        total: totalCount,
+        totalPages: totalPagesCount
       }));
     } catch (error) {
       console.error('Error fetching transactions:', error);
       toast.error('Failed to load transactions');
+      // Ensure transactions is always an array even on error
+      setTransactions([]);
     } finally {
       setLoading(false);
     }
@@ -70,7 +86,7 @@ const TransactionsPage = () => {
 
   const handleAddTransaction = async (transactionData) => {
     try {
-      await transactionAPI.createTransaction(transactionData);
+      await transactionAPI.create(transactionData);
       toast.success('Transaction added successfully!');
       setShowAddForm(false);
       fetchTransactions();
@@ -82,7 +98,7 @@ const TransactionsPage = () => {
 
   const handleEditTransaction = async (transactionData) => {
     try {
-      await transactionAPI.updateTransaction(editingTransaction._id, transactionData);
+      await transactionAPI.update(editingTransaction._id, transactionData);
       toast.success('Transaction updated successfully!');
       setEditingTransaction(null);
       fetchTransactions();
@@ -98,7 +114,7 @@ const TransactionsPage = () => {
     }
 
     try {
-      await transactionAPI.deleteTransaction(transactionId);
+      await transactionAPI.delete(transactionId);
       toast.success('Transaction deleted successfully!');
       fetchTransactions();
     } catch (error) {
@@ -275,26 +291,27 @@ const TransactionsPage = () => {
                   </tr>
                 </thead>
                 <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                  {transactions.map((transaction) => (
-                    <tr key={transaction._id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center">
-                          <div className="mr-3">
-                            {getTransactionIcon(transaction.type)}
-                          </div>
-                          <div>
-                            <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                              {transaction.description || 'No description'}
+                  {Array.isArray(transactions) && transactions.length > 0 ? (
+                    transactions.map((transaction) => (
+                      <tr key={transaction._id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex items-center">
+                            <div className="mr-3">
+                              {getTransactionIcon(transaction.type)}
                             </div>
-                            <div className="text-sm text-gray-500 dark:text-gray-400">
-                              {transaction.type}
+                            <div>
+                              <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                                {transaction.description || 'No description'}
+                              </div>
+                              <div className="text-sm text-gray-500 dark:text-gray-400">{transaction.type}
                             </div>
                           </div>
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300">
-                          {transaction.category}
+                          {transaction.category?.icon && <span className="mr-1">{transaction.category.icon}</span>}
+                          {transaction.category?.name || transaction.category || 'Uncategorized'}
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
@@ -326,7 +343,14 @@ const TransactionsPage = () => {
                         </div>
                       </td>
                     </tr>
-                  ))}
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan="5" className="px-6 py-12 text-center text-gray-500 dark:text-gray-400">
+                      {loading ? 'Loading transactions...' : 'No transactions found'}
+                    </td>
+                  </tr>
+                )}
                 </tbody>
               </table>
             </div>

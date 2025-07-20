@@ -2,7 +2,7 @@ import axios from 'axios';
 
 // Create axios instance with base configuration
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:5000',
+  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1',
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json',
@@ -12,11 +12,11 @@ const api = axios.create({
 // Request interceptor
 api.interceptors.request.use(
   (config) => {
-    // Add timestamp for cache busting
-    config.params = {
-      ...config.params,
-      _t: Date.now(),
-    };
+    // Add auth token if available
+    const token = localStorage.getItem('token');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
     
     // Log request in development
     if (import.meta.env.DEV) {
@@ -57,6 +57,12 @@ api.interceptors.response.use(
       if (window.location.pathname !== '/login') {
         window.location.href = '/login';
       }
+    }
+    
+    // Handle rate limiting
+    if (error.response?.status === 429) {
+      console.warn('Rate limit exceeded. Please wait before making more requests.');
+      error.message = 'Too many requests. Please wait a moment and try again.';
     }
     
     // Handle network errors

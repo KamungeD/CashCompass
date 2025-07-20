@@ -1,5 +1,83 @@
+const mongoose = require('mongoose');
 const { Transaction, Category, Budget } = require('../models');
 const { ErrorResponse } = require('../middleware/errorHandler');
+
+// Helper function to find or create category by name
+const findOrCreateCategoryByName = async (categoryName, transactionType, userId) => {
+  // First try to find existing category by name
+  let category = await Category.findOne({
+    name: { $regex: new RegExp(`^${categoryName}$`, 'i') },
+    $or: [
+      { user: userId },
+      { isSystem: true }
+    ]
+  });
+
+  if (!category) {
+    // Create a new category if it doesn't exist
+    const categoryData = {
+      name: categoryName.charAt(0).toUpperCase() + categoryName.slice(1),
+      type: transactionType === 'transfer' ? 'both' : transactionType,
+      user: userId,
+      isSystem: false,
+      isActive: true,
+      icon: getDefaultIcon(categoryName),
+      color: getDefaultColor(categoryName)
+    };
+
+    category = await Category.create(categoryData);
+  }
+
+  return category;
+};
+
+// Helper function to get default icon based on category name
+const getDefaultIcon = (categoryName) => {
+  const iconMap = {
+    'food': '🍕',
+    'transport': '🚗',
+    'utilities': '💡',
+    'entertainment': '🎬',
+    'shopping': '🛍️',
+    'healthcare': '🏥',
+    'education': '📚',
+    'rent': '🏠',
+    'insurance': '🛡️',
+    'salary': '💼',
+    'freelance': '💻',
+    'business': '🏢',
+    'investment': '📈',
+    'gift': '🎁',
+    'bonus': '🎯',
+    'refund': '↩️',
+    'other': '📦'
+  };
+  return iconMap[categoryName.toLowerCase()] || '📦';
+};
+
+// Helper function to get default color based on category name
+const getDefaultColor = (categoryName) => {
+  const colorMap = {
+    'food': '#f59e0b',
+    'transport': '#3b82f6',
+    'utilities': '#eab308',
+    'entertainment': '#ec4899',
+    'shopping': '#8b5cf6',
+    'healthcare': '#ef4444',
+    'education': '#06b6d4',
+    'rent': '#84cc16',
+    'insurance': '#6366f1',
+    'salary': '#10b981',
+    'freelance': '#059669',
+    'business': '#0d9488',
+    'investment': '#dc2626',
+    'gift': '#f97316',
+    'bonus': '#65a30d',
+    'refund': '#0891b2',
+    'other': '#6b7280'
+  };
+  return colorMap[categoryName.toLowerCase()] || '#6b7280';
+};
 
 // @desc    Get all transactions for user
 // @route   GET /api/transactions
@@ -27,8 +105,38 @@ const getTransactions = async (req, res, next) => {
     const query = { user: req.user._id };
 
     // Add filters
-    if (type) query.type = type;
-    if (category) query.category = category;
+    if (type && type !== 'all') query.type = type;
+    if (category && category !== 'all') {
+      // Handle category filtering - check if it's ObjectId or string
+      if (mongoose.Types.ObjectId.isValid(category)) {
+        query.category = category;
+      } else {
+        // Find category by name and use its ObjectId
+        const categoryDoc = await Category.findOne({ 
+          name: { $regex: new RegExp(`^${category}$`, 'i') },
+          user: req.user._id 
+        });
+        if (categoryDoc) {
+          query.category = categoryDoc._id;
+        } else {
+          // If category doesn't exist, return empty results
+          return res.status(200).json({
+            success: true,
+            data: {
+              transactions: [],
+              pagination: {
+                currentPage: parseInt(page),
+                totalPages: 0,
+                totalItems: 0,
+                hasNextPage: false,
+                hasPrevPage: false,
+                limit: parseInt(limit)
+              }
+            }
+          });
+        }
+      }
+    }
     if (paymentMethod) query.paymentMethod = paymentMethod;
     if (status) query.status = status;
 
@@ -129,21 +237,39 @@ const createTransaction = async (req, res, next) => {
       user: req.user._id
     };
 
-    // Verify category belongs to user or is system category
-    const category = await Category.findOne({
-      _id: req.body.category,
-      $or: [
-        { user: req.user._id },
-        { isSystem: true }
-      ]
-    });
+    let category;
 
-    if (!category) {
-      return next(new ErrorResponse('Category not found or not accessible', 404));
+    // Handle category - can be ObjectId or string name
+    if (req.body.category) {
+      // Check if it's a valid ObjectId
+      if (req.body.category.match(/^[0-9a-fA-F]{24}$/)) {
+        // It's an ObjectId, find the category
+        category = await Category.findOne({
+          _id: req.body.category,
+          $or: [
+            { user: req.user._id },
+            { isSystem: true }
+          ]
+        });
+
+        if (!category) {
+          return next(new ErrorResponse('Category not found or not accessible', 404));
+        }
+      } else {
+        // It's a string name, find or create the category
+        category = await findOrCreateCategoryByName(
+          req.body.category,
+          req.body.type,
+          req.user._id
+        );
+      }
+
+      // Update transaction data with the actual category ObjectId
+      transactionData.category = category._id;
     }
 
     // Check if category type matches transaction type
-    if (category.type !== 'both' && category.type !== req.body.type) {
+    if (category && category.type !== 'both' && category.type !== req.body.type) {
       return next(new ErrorResponse(`Category is for ${category.type} transactions only`, 400));
     }
 

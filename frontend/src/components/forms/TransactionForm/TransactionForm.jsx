@@ -43,9 +43,10 @@ const categories = {
 
 const paymentMethods = [
   { value: 'cash', label: '💵 Cash' },
-  { value: 'card', label: '💳 Card' },
-  { value: 'bank', label: '🏦 Bank Transfer' },
-  { value: 'mpesa', label: '📱 M-Pesa' },
+  { value: 'credit_card', label: '💳 Credit Card' },
+  { value: 'debit_card', label: '💳 Debit Card' },
+  { value: 'bank_transfer', label: '🏦 Bank Transfer' },
+  { value: 'mobile_money', label: '📱 M-Pesa' },
   { value: 'other', label: '📝 Other' }
 ];
 
@@ -79,11 +80,20 @@ const TransactionForm = ({ initialData, onSubmit, onCancel, isLoading = false })
   };
 
   const handleFormSubmit = (data) => {
-    onSubmit({
+    const formattedData = {
       ...data,
       amount: parseFloat(data.amount),
       date: new Date(data.date).toISOString()
-    });
+    };
+
+    // Remove empty description or provide a default
+    if (!formattedData.description || formattedData.description.trim() === '') {
+      delete formattedData.description; // Remove empty description
+    } else {
+      formattedData.description = formattedData.description.trim();
+    }
+
+    onSubmit(formattedData);
   };
 
   return (

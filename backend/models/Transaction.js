@@ -44,7 +44,7 @@ const transactionSchema = new mongoose.Schema({
   // Description and notes
   description: {
     type: String,
-    required: [true, 'Transaction description is required'],
+    required: false, // Make description optional
     trim: true,
     maxlength: [500, 'Description cannot exceed 500 characters']
   },
@@ -129,7 +129,7 @@ const transactionSchema = new mongoose.Schema({
   },
   baseCurrencyAmount: {
     type: Number,
-    required: true
+    required: false // This will be calculated by pre-save hook
   },
   
   // Recurring transaction information
@@ -311,9 +311,8 @@ transactionSchema.virtual('formattedAmount').get(function() {
 
 // Pre-save middleware to calculate base currency amount
 transactionSchema.pre('save', function(next) {
-  if (this.isModified('amount') || this.isModified('exchangeRate')) {
-    this.baseCurrencyAmount = this.amount * (this.exchangeRate || 1);
-  }
+  // Always calculate baseCurrencyAmount
+  this.baseCurrencyAmount = this.amount * (this.exchangeRate || 1);
   next();
 });
 

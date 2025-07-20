@@ -34,6 +34,18 @@ const AnalyticsPage = () => {
     fetchBudgets();
   }, []);
 
+  // Debug logging to understand data structure
+  useEffect(() => {
+    console.log('Analytics Debug:', { 
+      transactions, 
+      transactionsType: typeof transactions, 
+      isArray: Array.isArray(transactions),
+      budgets,
+      budgetsType: typeof budgets,
+      isBudgetsArray: Array.isArray(budgets)
+    });
+  }, [transactions, budgets]);
+
   // Date range calculations
   const getDateRange = () => {
     const now = new Date();
@@ -54,8 +66,12 @@ const AnalyticsPage = () => {
 
   const { start: startDate, end: endDate } = getDateRange();
 
-  // Filter transactions by date range
-  const filteredTransactions = transactions.filter(transaction => {
+  // Ensure transactions and budgets are arrays with robust type checking
+  const safeTransactions = Array.isArray(transactions) ? transactions : [];
+  const safeBudgets = Array.isArray(budgets) ? budgets : [];
+
+  // Filter transactions by date range with safety check
+  const filteredTransactions = safeTransactions.filter(transaction => {
     const transactionDate = parseISO(transaction.date);
     return transactionDate >= startDate && transactionDate <= endDate;
   });
@@ -105,7 +121,7 @@ const AnalyticsPage = () => {
 
   const calculateBudgetAnalysis = () => {
     const currentMonth = format(new Date(), 'yyyy-MM');
-    const currentBudget = budgets.find(b => b.month === currentMonth && b.isActive);
+    const currentBudget = safeBudgets.find(b => b.month === currentMonth && b.isActive);
     
     if (!currentBudget) return null;
 
