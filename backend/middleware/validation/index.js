@@ -647,5 +647,56 @@ module.exports = {
   categoryValidation,
   budgetValidation,
   commonValidation,
-  handleValidationErrors
+  handleValidationErrors,
+  
+  // Main validation function used in routes
+  validate: (validationType) => {
+    const validationMap = {
+      // User validations
+      'register': userValidation.register,
+      'login': userValidation.login,
+      'updateProfile': userValidation.updateProfile,
+      'changePassword': userValidation.changePassword,
+      'forgotPassword': userValidation.forgotPassword,
+      'resetPassword': userValidation.resetPassword,
+      'resendVerification': userValidation.forgotPassword, // Same as forgot password
+      
+      // Transaction validations
+      'createTransaction': transactionValidation.create,
+      'updateTransaction': transactionValidation.update,
+      'bulkCreateTransactions': transactionValidation.create, // Use same as create
+      
+      // Category validations
+      'createCategory': categoryValidation.create,
+      'updateCategory': categoryValidation.update,
+      'moveCategory': [
+        body('newParent').optional().isMongoId().withMessage('Invalid parent category ID'),
+        param('id').isMongoId().withMessage('Invalid category ID'),
+        handleValidationErrors
+      ],
+      'bulkUpdateCategories': [
+        body('updates').isArray().withMessage('Updates must be an array'),
+        body('updates.*.id').isMongoId().withMessage('Invalid category ID'),
+        handleValidationErrors
+      ],
+      
+      // Budget validations
+      'createBudget': budgetValidation.create,
+      'updateBudget': budgetValidation.update,
+      'resetBudget': [
+        body('startDate').notEmpty().isISO8601().withMessage('Valid start date required'),
+        body('endDate').notEmpty().isISO8601().withMessage('Valid end date required'),
+        param('id').isMongoId().withMessage('Invalid budget ID'),
+        handleValidationErrors
+      ],
+      'addCategoryToBudget': [
+        body('category').notEmpty().isMongoId().withMessage('Valid category ID required'),
+        body('allocatedAmount').notEmpty().isFloat({ min: 0 }).withMessage('Valid allocated amount required'),
+        param('id').isMongoId().withMessage('Invalid budget ID'),
+        handleValidationErrors
+      ]
+    };
+    
+    return validationMap[validationType] || [handleValidationErrors];
+  }
 };

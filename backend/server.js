@@ -15,18 +15,14 @@ const colors = require('colors');
 dotenv.config();
 
 // Import database connection
-const connectDB = require('./config/database');
+const { connectDB } = require('./config/database');
 
 // Import error handling middleware
 const errorHandler = require('./middleware/errorHandler');
 const notFound = require('./middleware/notFound');
 
-// Import routes (will be created in next phases)
-// const authRoutes = require('./routes/auth');
-// const transactionRoutes = require('./routes/transactions');
-// const budgetRoutes = require('./routes/budgets');
-// const categoryRoutes = require('./routes/categories');
-// const analyticsRoutes = require('./routes/analytics');
+// Import routes
+const apiRoutes = require('./routes');
 
 // Connect to MongoDB
 connectDB();
@@ -143,12 +139,8 @@ app.get('/', (req, res) => {
   });
 });
 
-// API routes (will be uncommented as routes are created)
-// app.use(`${apiPrefix}/auth`, authRoutes);
-// app.use(`${apiPrefix}/transactions`, transactionRoutes);
-// app.use(`${apiPrefix}/budgets`, budgetRoutes);
-// app.use(`${apiPrefix}/categories`, categoryRoutes);
-// app.use(`${apiPrefix}/analytics`, analyticsRoutes);
+// API routes
+app.use(`${apiPrefix}`, apiRoutes);
 
 // Catch-all for API documentation placeholder
 app.get(`${apiPrefix}/docs`, (req, res) => {
@@ -161,7 +153,35 @@ app.get(`${apiPrefix}/docs`, (req, res) => {
       transactions: `${apiPrefix}/transactions`,
       budgets: `${apiPrefix}/budgets`,
       categories: `${apiPrefix}/categories`,
-      analytics: `${apiPrefix}/analytics`
+      health: `${apiPrefix}/health`
+    },
+    authEndpoints: {
+      register: `POST ${apiPrefix}/auth/register`,
+      login: `POST ${apiPrefix}/auth/login`,
+      profile: `GET ${apiPrefix}/auth/profile`,
+      logout: `POST ${apiPrefix}/auth/logout`,
+      forgotPassword: `POST ${apiPrefix}/auth/forgot-password`,
+      resetPassword: `POST ${apiPrefix}/auth/reset-password`
+    },
+    transactionEndpoints: {
+      list: `GET ${apiPrefix}/transactions`,
+      create: `POST ${apiPrefix}/transactions`,
+      details: `GET ${apiPrefix}/transactions/:id`,
+      update: `PUT ${apiPrefix}/transactions/:id`,
+      delete: `DELETE ${apiPrefix}/transactions/:id`,
+      stats: `GET ${apiPrefix}/transactions/stats`
+    },
+    categoryEndpoints: {
+      list: `GET ${apiPrefix}/categories`,
+      create: `POST ${apiPrefix}/categories`,
+      tree: `GET ${apiPrefix}/categories/tree`,
+      search: `GET ${apiPrefix}/categories/search`
+    },
+    budgetEndpoints: {
+      list: `GET ${apiPrefix}/budgets`,
+      create: `POST ${apiPrefix}/budgets`,
+      active: `GET ${apiPrefix}/budgets/active`,
+      stats: `GET ${apiPrefix}/budgets/stats`
     },
     github: 'https://github.com/KamungeD/cashcompass',
     author: 'Duncan Kamunge (@KamungeD)'
