@@ -18,8 +18,7 @@ dotenv.config();
 const { connectDB } = require('./config/database');
 
 // Import error handling middleware
-const errorHandler = require('./middleware/errorHandler');
-const notFound = require('./middleware/notFound');
+const { errorHandler, notFound } = require('./middleware/errorHandler');
 
 // Import routes
 const apiRoutes = require('./routes');

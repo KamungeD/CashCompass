@@ -12,6 +12,8 @@ const handleValidationErrors = (req, res, next) => {
       value: error.value
     }));
     
+    console.log('Validation errors:', errorMessages); // Debug log
+    
     return next(new ErrorResponse('Validation failed', 400, errorMessages));
   }
   
