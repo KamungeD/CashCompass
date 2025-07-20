@@ -2,7 +2,7 @@
   "name": "cashcompass",
   "version": "1.0.0",
   "description": "CashCompass - Navigate your financial journey with intuitive expense tracking, smart budgeting, and visual insights",
-  "author": "Duncan Kamunge <kamunge@example.com> (https://github.com/KamungeD)",
+  "author": "Duncan Kamunge <duncan.kamunge@gmail.com> (https://github.com/KamungeD)",
   "license": "MIT",
   "private": true,
   "workspaces": [

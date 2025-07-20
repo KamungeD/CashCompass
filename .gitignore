@@ -1,16 +1,245 @@
+# CashCompass - Git Ignore File
+# Author: Duncan Kamunge (@KamungeD)
+
+# ==============================================
+# PROJECT SPECIFIC FILES (Keep hidden for now)
+# ==============================================
 CashCompass Kenya.docx
 CashCompass-Pitch-Deck-Brief.md
 Development-Checklist.md
 Development-Plan.md
 
+# ==============================================
+# ENVIRONMENT & SECRETS
+# ==============================================
+# Never commit environment variables or secrets
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
 
-# ===========================================
-# Keep these files (comments for clarity)
-# ===========================================
+# Environment configuration files
+config.json
+secrets.json
 
-# README.md - Project documentation
-# package.json - Dependency management
-# package-lock.json - Lock file for dependencies
-# .gitignore - This file
-# LICENSE - Project license
-# CHANGELOG.md - Version history
+# ==============================================
+# NODE MODULES & DEPENDENCIES
+# ==============================================
+# Node.js dependencies
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Package manager lock files (keep for consistency)
+# package-lock.json
+# yarn.lock
+# pnpm-lock.yaml
+
+# ==============================================
+# BUILD OUTPUTS
+# ==============================================
+# Frontend build output
+frontend/dist/
+frontend/build/
+frontend/.vite/
+
+# Backend build output
+backend/dist/
+backend/build/
+
+# Static files
+public/uploads/
+public/static/
+
+# ==============================================
+# DEVELOPMENT TOOLS
+# ==============================================
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Operating system files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# ==============================================
+# LOGS & DEBUGGING
+# ==============================================
+# Log files
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+
+# Runtime data
+pids/
+*.pid
+*.seed
+*.pid.lock
+
+# Coverage directory used by tools like istanbul
+coverage/
+*.lcov
+
+# nyc test coverage
+.nyc_output/
+
+# ==============================================
+# TESTING
+# ==============================================
+# Test artifacts
+test-results/
+test-output/
+jest-results.json
+
+# ==============================================
+# DATABASES
+# ==============================================
+# Local database files
+*.db
+*.sqlite
+*.sqlite3
+
+# MongoDB dumps
+dumps/
+mongo-data/
+
+# ==============================================
+# TEMPORARY FILES
+# ==============================================
+# Temporary directories
+tmp/
+temp/
+.tmp/
+
+# Cache directories
+.cache/
+.parcel-cache/
+.next/
+.nuxt/
+
+# ==============================================
+# DEPLOYMENT & PRODUCTION
+# ==============================================
+# Deployment artifacts
+.vercel/
+.netlify/
+.serverless/
+
+# Docker
+.dockerignore
+docker-compose.override.yml
+
+# ==============================================
+# SECURITY & CERTIFICATES
+# ==============================================
+# SSL certificates
+*.pem
+*.key
+*.crt
+*.cert
+
+# ==============================================
+# MEDIA & UPLOADS
+# ==============================================
+# User uploaded files
+uploads/
+public/uploads/
+static/uploads/
+
+# Large media files (if not part of design)
+# *.jpg
+# *.jpeg
+# *.png
+# *.gif
+
+# ==============================================
+# ESLINT & PRETTIER
+# ==============================================
+# ESLint cache
+.eslintcache
+
+# Prettier cache
+.prettiercache
+
+# ==============================================
+# FRONTEND SPECIFIC
+# ==============================================
+# Vite
+.vite/
+
+# React
+.react/
+
+# Storybook
+storybook-static/
+
+# ==============================================
+# BACKEND SPECIFIC
+# ==============================================
+# Express/Node.js
+sessions/
+
+# ==============================================
+# MONITORING & ANALYTICS
+# ==============================================
+# Performance monitoring
+.nyc_output/
+coverage/
+
+# ==============================================
+# BACKUPS
+# ==============================================
+# Database backups
+backup/
+backups/
+*.backup
+*.bak
+
+# ==============================================
+# LOCAL DEVELOPMENT
+# ==============================================
+# Local configuration overrides
+local.json
+local.js
+
+# Development scripts
+dev-scripts/
+
+# ==============================================
+# MISC
+# ==============================================
+# Archive files
+*.zip
+*.tar.gz
+*.rar
+
+# ==============================================
+# KEEP THESE FILES (NEGATION PATTERNS)
+# ==============================================
+# Keep important documentation
+!README.md
+!CHANGELOG.md
+!LICENSE
+!.env.example
+
+# Keep essential config files
+!package.json
+!tsconfig.json
+!vite.config.js
+!tailwind.config.js
+
+# Keep project structure
+!.gitkeep
