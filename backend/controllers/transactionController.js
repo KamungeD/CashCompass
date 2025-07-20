@@ -503,6 +503,203 @@ const bulkCreateTransactions = async (req, res, next) => {
   }
 };
 
+// @desc    Get total balance for user
+// @route   Internal function
+// @access  Private
+const getTotalBalance = async (userId) => {
+  try {
+    const result = await Transaction.aggregate([
+      { $match: { user: userId, status: 'completed' } },
+      {
+        $group: {
+          _id: null,
+          totalIncome: {
+            $sum: {
+              $cond: [{ $eq: ['$type', 'income'] }, '$baseCurrencyAmount', 0]
+            }
+          },
+          totalExpenses: {
+            $sum: {
+              $cond: [{ $eq: ['$type', 'expense'] }, '$baseCurrencyAmount', 0]
+            }
+          }
+        }
+      }
+    ]);
+
+    if (result.length === 0) return 0;
+    return result[0].totalIncome - result[0].totalExpenses;
+  } catch (error) {
+    console.error('Error calculating total balance:', error);
+    return 0;
+  }
+};
+
+// @desc    Get monthly income for user
+// @route   Internal function
+// @access  Private
+const getMonthlyIncome = async (userId, startDate, endDate) => {
+  try {
+    const result = await Transaction.aggregate([
+      {
+        $match: {
+          user: userId,
+          type: 'income',
+          status: 'completed',
+          date: { $gte: startDate, $lte: endDate }
+        }
+      },
+      {
+        $group: {
+          _id: null,
+          total: { $sum: '$baseCurrencyAmount' }
+        }
+      }
+    ]);
+
+    return result.length > 0 ? result[0].total : 0;
+  } catch (error) {
+    console.error('Error calculating monthly income:', error);
+    return 0;
+  }
+};
+
+// @desc    Get monthly expenses for user
+// @route   Internal function
+// @access  Private
+const getMonthlyExpenses = async (userId, startDate, endDate) => {
+  try {
+    const result = await Transaction.aggregate([
+      {
+        $match: {
+          user: userId,
+          type: 'expense',
+          status: 'completed',
+          date: { $gte: startDate, $lte: endDate }
+        }
+      },
+      {
+        $group: {
+          _id: null,
+          total: { $sum: '$baseCurrencyAmount' }
+        }
+      }
+    ]);
+
+    return result.length > 0 ? result[0].total : 0;
+  } catch (error) {
+    console.error('Error calculating monthly expenses:', error);
+    return 0;
+  }
+};
+
+// @desc    Get recent transactions for user
+// @route   Internal function
+// @access  Private
+const getRecentTransactions = async (userId, limit = 5) => {
+  try {
+    const transactions = await Transaction.find({
+      user: userId,
+      status: 'completed'
+    })
+      .populate('category', 'name color icon')
+      .sort({ date: -1 })
+      .limit(limit)
+      .lean();
+
+    return transactions;
+  } catch (error) {
+    console.error('Error fetching recent transactions:', error);
+    return [];
+  }
+};
+
+// @desc    Get monthly statistics for user
+// @route   Internal function
+// @access  Private
+const getMonthlyStats = async (userId, startDate, endDate) => {
+  try {
+    const [incomeResult, expenseResult, balanceResult] = await Promise.all([
+      Transaction.aggregate([
+        {
+          $match: {
+            user: userId,
+            type: 'income',
+            status: 'completed',
+            date: { $gte: startDate, $lte: endDate }
+          }
+        },
+        { $group: { _id: null, total: { $sum: '$baseCurrencyAmount' } } }
+      ]),
+      Transaction.aggregate([
+        {
+          $match: {
+            user: userId,
+            type: 'expense',
+            status: 'completed',
+            date: { $gte: startDate, $lte: endDate }
+          }
+        },
+        { $group: { _id: null, total: { $sum: '$baseCurrencyAmount' } } }
+      ]),
+      Transaction.aggregate([
+        { $match: { user: userId, status: 'completed' } },
+        {
+          $group: {
+            _id: null,
+            totalIncome: {
+              $sum: {
+                $cond: [{ $eq: ['$type', 'income'] }, '$baseCurrencyAmount', 0]
+              }
+            },
+            totalExpenses: {
+              $sum: {
+                $cond: [{ $eq: ['$type', 'expense'] }, '$baseCurrencyAmount', 0]
+              }
+            }
+          }
+        }
+      ])
+    ]);
+
+    const income = incomeResult.length > 0 ? incomeResult[0].total : 0;
+    const expenses = expenseResult.length > 0 ? expenseResult[0].total : 0;
+    const totalBalance = balanceResult.length > 0 ? 
+      (balanceResult[0].totalIncome - balanceResult[0].totalExpenses) : 0;
+
+    return {
+      income,
+      expenses,
+      totalBalance
+    };
+  } catch (error) {
+    console.error('Error calculating monthly stats:', error);
+    return {
+      income: 0,
+      expenses: 0,
+      totalBalance: 0
+    };
+  }
+};
+
+// @desc    Get recent transactions for dashboard
+// @route   GET /api/transactions/recent
+// @access  Private
+const getRecentTransactionsRoute = async (req, res, next) => {
+  try {
+    const { limit = 5 } = req.query;
+    const transactions = await getRecentTransactions(req.user._id, parseInt(limit));
+
+    res.status(200).json({
+      success: true,
+      count: transactions.length,
+      data: transactions
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   getTransactions,
   getTransaction,
@@ -510,5 +707,12 @@ module.exports = {
   updateTransaction,
   deleteTransaction,
   getTransactionStats,
-  bulkCreateTransactions
+  bulkCreateTransactions,
+  // Dashboard helper functions
+  getTotalBalance,
+  getMonthlyIncome,
+  getMonthlyExpenses,
+  getRecentTransactions,
+  getMonthlyStats,
+  getRecentTransactionsRoute
 };

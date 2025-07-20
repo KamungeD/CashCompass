@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import api from '../services/api';
+import { authAPI, setAuthToken } from '../services/api';
 import { toast } from 'react-hot-toast';
 
 const AuthContext = createContext();
@@ -25,16 +25,16 @@ export const AuthProvider = ({ children }) => {
       if (token) {
         try {
           // Set token in axios defaults
-          api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+          setAuthToken(token);
           
           // Validate token by fetching user profile
-          const response = await api.get('/auth/profile');
+          const response = await authAPI.getProfile();
           setUser(response.data.data.user);
           setIsAuthenticated(true);
         } catch (error) {
           console.error('Token validation failed:', error);
           localStorage.removeItem('token');
-          delete api.defaults.headers.common['Authorization'];
+          setAuthToken(null);
         }
       }
       setLoading(false);
@@ -46,12 +46,12 @@ export const AuthProvider = ({ children }) => {
   const login = async (credentials) => {
     try {
       setLoading(true);
-      const response = await api.post('/auth/login', credentials);
+      const response = await authAPI.login(credentials);
       const { user, token } = response.data.data;
 
       // Store token and set auth header
       localStorage.setItem('token', token);
-      api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      setAuthToken(token);
 
       setUser(user);
       setIsAuthenticated(true);
@@ -72,12 +72,12 @@ export const AuthProvider = ({ children }) => {
   const register = async (userData) => {
     try {
       setLoading(true);
-      const response = await api.post('/auth/register', userData);
+      const response = await authAPI.register(userData);
       const { user, token } = response.data.data;
 
       // Store token and set auth header
       localStorage.setItem('token', token);
-      api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      setAuthToken(token);
 
       setUser(user);
       setIsAuthenticated(true);
@@ -97,13 +97,13 @@ export const AuthProvider = ({ children }) => {
 
   const logout = async () => {
     try {
-      await api.post('/auth/logout');
+      await authAPI.logout();
     } catch (error) {
       console.error('Logout error:', error);
     } finally {
       // Clear local state and storage
       localStorage.removeItem('token');
-      delete api.defaults.headers.common['Authorization'];
+      setAuthToken(null);
       setUser(null);
       setIsAuthenticated(false);
       toast.success('Logged out successfully');
@@ -114,7 +114,7 @@ export const AuthProvider = ({ children }) => {
   const updateProfile = async (profileData) => {
     try {
       setLoading(true);
-            const response = await api.put('/auth/profile', userData);
+      const response = await authAPI.updateProfile(profileData);
       setUser(response.data.data.user);
       toast.success('Profile updated successfully');
       return { success: true };

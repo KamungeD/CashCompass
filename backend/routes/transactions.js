@@ -8,7 +8,8 @@ const {
   updateTransaction,
   deleteTransaction,
   getTransactionStats,
-  bulkCreateTransactions
+  bulkCreateTransactions,
+  getRecentTransactionsRoute
 } = require('../controllers/transactionController');
 
 const { authenticate: protect } = require('../middleware/auth');
@@ -27,6 +28,9 @@ router.route('/bulk')
 
 router.route('/stats')
   .get(getTransactionStats);
+
+router.route('/recent')
+  .get(getRecentTransactionsRoute);
 
 router.route('/:id')
   .get(getTransaction)

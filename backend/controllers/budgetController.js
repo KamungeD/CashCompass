@@ -562,6 +562,87 @@ const getBudgetAlerts = async (req, res, next) => {
   }
 };
 
+// @desc    Get budget summary for dashboard
+// @route   Internal function
+// @access  Private
+const getBudgetSummary = async (userId) => {
+  try {
+    const currentDate = new Date();
+    const startOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+    const endOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
+
+    // Get active budgets for current month
+    const activeBudgets = await Budget.find({
+      user: userId,
+      status: 'active',
+      startDate: { $lte: endOfMonth },
+      endDate: { $gte: startOfMonth }
+    }).populate('categories.category', 'name color icon');
+
+    let totalBudgeted = 0;
+    let totalSpent = 0;
+    let budgetProgress = [];
+
+    for (const budget of activeBudgets) {
+      // Calculate total budgeted amount
+      const budgetAmount = budget.totalAmount || 0;
+      totalBudgeted += budgetAmount;
+
+      // Calculate spent amount for this budget
+      const spent = await Transaction.aggregate([
+        {
+          $match: {
+            user: userId,
+            type: 'expense',
+            status: 'completed',
+            date: { $gte: budget.startDate, $lte: budget.endDate },
+            category: { $in: budget.categories.map(c => c.category._id) }
+          }
+        },
+        {
+          $group: {
+            _id: null,
+            total: { $sum: '$baseCurrencyAmount' }
+          }
+        }
+      ]);
+
+      const spentAmount = spent.length > 0 ? spent[0].total : 0;
+      totalSpent += spentAmount;
+
+      budgetProgress.push({
+        id: budget._id,
+        name: budget.name,
+        budgeted: budgetAmount,
+        spent: spentAmount,
+        remaining: Math.max(0, budgetAmount - spentAmount),
+        percentage: budgetAmount > 0 ? (spentAmount / budgetAmount) * 100 : 0,
+        status: spentAmount >= budgetAmount ? 'over' : 
+               spentAmount >= budgetAmount * 0.8 ? 'warning' : 'good'
+      });
+    }
+
+    return {
+      totalBudgeted,
+      totalSpent,
+      totalRemaining: Math.max(0, totalBudgeted - totalSpent),
+      overallPercentage: totalBudgeted > 0 ? (totalSpent / totalBudgeted) * 100 : 0,
+      budgetCount: activeBudgets.length,
+      budgetProgress
+    };
+  } catch (error) {
+    console.error('Error calculating budget summary:', error);
+    return {
+      totalBudgeted: 0,
+      totalSpent: 0,
+      totalRemaining: 0,
+      overallPercentage: 0,
+      budgetCount: 0,
+      budgetProgress: []
+    };
+  }
+};
+
 module.exports = {
   getBudgets,
   getActiveBudgets,
@@ -573,5 +654,6 @@ module.exports = {
   resetBudget,
   addCategoryToBudget,
   removeCategoryFromBudget,
-  getBudgetAlerts
+  getBudgetAlerts,
+  getBudgetSummary
 };

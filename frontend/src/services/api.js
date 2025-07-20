@@ -84,4 +84,85 @@ if (token) {
   setAuthToken(token);
 }
 
+// Dashboard API functions
+export const dashboardAPI = {
+  // Get dashboard overview data
+  getOverview: () => api.get('/dashboard/overview'),
+  
+  // Get recent transactions
+  getRecentTransactions: (limit = 5) => api.get(`/transactions/recent?limit=${limit}`),
+  
+  // Get budget summary
+  getBudgetSummary: () => api.get('/budgets/summary'),
+  
+  // Get financial stats
+  getFinancialStats: () => api.get('/dashboard/stats'),
+};
+
+// Transaction API functions
+export const transactionAPI = {
+  // Get all transactions with pagination
+  getAll: (page = 1, limit = 10, filters = {}) => {
+    const params = new URLSearchParams({ page, limit, ...filters });
+    return api.get(`/transactions?${params}`);
+  },
+  
+  // Get single transaction
+  getById: (id) => api.get(`/transactions/${id}`),
+  
+  // Create new transaction
+  create: (data) => api.post('/transactions', data),
+  
+  // Update transaction
+  update: (id, data) => api.put(`/transactions/${id}`, data),
+  
+  // Delete transaction
+  delete: (id) => api.delete(`/transactions/${id}`),
+  
+  // Get transaction categories
+  getCategories: () => api.get('/categories'),
+};
+
+// Budget API functions
+export const budgetAPI = {
+  // Get all budgets
+  getAll: () => api.get('/budgets'),
+  
+  // Get single budget
+  getById: (id) => api.get(`/budgets/${id}`),
+  
+  // Create new budget
+  create: (data) => api.post('/budgets', data),
+  
+  // Update budget
+  update: (id, data) => api.put(`/budgets/${id}`, data),
+  
+  // Delete budget
+  delete: (id) => api.delete(`/budgets/${id}`),
+  
+  // Get budget progress
+  getProgress: (id) => api.get(`/budgets/${id}/progress`),
+};
+
+// Auth API functions
+export const authAPI = {
+  // User registration
+  register: (data) => api.post('/auth/register', data),
+  
+  // User login
+  login: (data) => api.post('/auth/login', data),
+  
+  // User logout
+  logout: () => api.post('/auth/logout'),
+  
+  // Get user profile
+  getProfile: () => api.get('/auth/profile'),
+  
+  // Update user profile
+  updateProfile: (data) => api.put('/auth/profile', data),
+  
+  // Change password
+  changePassword: (data) => api.put('/auth/change-password', data),
+};
+
 export default api;

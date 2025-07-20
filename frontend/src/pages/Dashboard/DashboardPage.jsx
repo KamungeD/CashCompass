@@ -6,78 +6,59 @@ import {
   PieChart,
   Plus,
   ArrowUpRight,
-  ArrowDownRight
+  ArrowDownRight,
+  RefreshCw
 } from 'lucide-react';
 import { Button } from '../../components/common';
+import { useDashboard } from '../../hooks/useDashboard';
+import { useAuth } from '../../context/AuthContext';
 
 const DashboardPage = () => {
+  const { user } = useAuth();
+  const { data, loading, error, refreshData } = useDashboard();
+
+  // Static stats structure with dynamic data
   const stats = [
     {
       title: 'Total Balance',
-      value: 'KSh 45,250.00',
-      change: '+12.5%',
-      trend: 'up',
+      value: new Intl.NumberFormat('en-KE', {
+        style: 'currency',
+        currency: 'KES',
+      }).format(data.stats.totalBalance.value || 0),
+      change: `${data.stats.totalBalance.change >= 0 ? '+' : ''}${data.stats.totalBalance.change.toFixed(1)}%`,
+      trend: data.stats.totalBalance.trend,
       icon: Wallet,
       color: 'blue',
     },
     {
       title: 'Monthly Income',
-      value: 'KSh 85,000.00',
-      change: '+8.2%',
-      trend: 'up',
+      value: new Intl.NumberFormat('en-KE', {
+        style: 'currency',
+        currency: 'KES',
+      }).format(data.stats.monthlyIncome.value || 0),
+      change: `${data.stats.monthlyIncome.change >= 0 ? '+' : ''}${data.stats.monthlyIncome.change.toFixed(1)}%`,
+      trend: data.stats.monthlyIncome.trend,
       icon: TrendingUp,
       color: 'green',
     },
     {
       title: 'Monthly Expenses',
-      value: 'KSh 42,750.00',
-      change: '-3.1%',
-      trend: 'down',
+      value: new Intl.NumberFormat('en-KE', {
+        style: 'currency',
+        currency: 'KES',
+      }).format(data.stats.monthlyExpenses.value || 0),
+      change: `${data.stats.monthlyExpenses.change >= 0 ? '+' : ''}${data.stats.monthlyExpenses.change.toFixed(1)}%`,
+      trend: data.stats.monthlyExpenses.trend,
       icon: TrendingDown,
       color: 'red',
     },
     {
       title: 'Savings Rate',
-      value: '48.5%',
-      change: '+5.3%',
-      trend: 'up',
+      value: `${data.stats.savingsRate.value.toFixed(1)}%`,
+      change: `${data.stats.savingsRate.change >= 0 ? '+' : ''}${data.stats.savingsRate.change.toFixed(1)}%`,
+      trend: data.stats.savingsRate.trend,
       icon: PieChart,
       color: 'purple',
-    },
-  ];
-
-  const recentTransactions = [
-    {
-      id: 1,
-      description: 'Grocery Shopping',
-      amount: -2500,
-      category: 'Food & Dining',
-      date: '2025-07-20',
-      type: 'expense',
-    },
-    {
-      id: 2,
-      description: 'Salary Deposit',
-      amount: 85000,
-      category: 'Income',
-      date: '2025-07-20',
-      type: 'income',
-    },
-    {
-      id: 3,
-      description: 'Internet Bill',
-      amount: -3500,
-      category: 'Bills & Utilities',
-      date: '2025-07-19',
-      type: 'expense',
-    },
-    {
-      id: 4,
-      description: 'Coffee Shop',
-      amount: -450,
-      category: 'Food & Dining',
-      date: '2025-07-19',
-      type: 'expense',
     },
   ];
 
@@ -88,17 +69,48 @@ const DashboardPage = () => {
     }).format(Math.abs(amount));
   };
 
+  const formatTransactionDate = (dateString) => {
+    return new Date(dateString).toLocaleDateString('en-KE', {
+      month: 'short',
+      day: 'numeric'
+    });
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+        <div className="text-center">
+          <RefreshCw className="h-8 w-8 animate-spin text-primary-600 mx-auto mb-4" />
+          <p className="text-gray-600 dark:text-gray-400">Loading dashboard...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">
-            Dashboard
-          </h1>
-          <p className="mt-2 text-gray-600 dark:text-gray-400">
-            Welcome back! Here's your financial overview.
-          </p>
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">
+                Dashboard
+              </h1>
+              <p className="mt-2 text-gray-600 dark:text-gray-400">
+                Welcome back, {user?.firstName || 'User'}! Here's your financial overview.
+              </p>
+            </div>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={refreshData}
+              className="flex items-center gap-2"
+            >
+              <RefreshCw className="h-4 w-4" />
+              Refresh
+            </Button>
+          </div>
         </div>
 
         {/* Stats Grid */}
@@ -156,44 +168,54 @@ const DashboardPage = () => {
             </div>
             <div className="p-6">
               <div className="space-y-4">
-                {recentTransactions.map((transaction) => (
-                  <div key={transaction.id} className="flex items-center justify-between">
-                    <div className="flex items-center space-x-3">
-                      <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-                        transaction.type === 'income' 
-                          ? 'bg-green-100 dark:bg-green-900/30' 
-                          : 'bg-red-100 dark:bg-red-900/30'
-                      }`}>
-                        {transaction.type === 'income' ? (
-                          <ArrowUpRight className="h-5 w-5 text-green-600 dark:text-green-400" />
-                        ) : (
-                          <ArrowDownRight className="h-5 w-5 text-red-600 dark:text-red-400" />
-                        )}
+                {data.recentTransactions.length > 0 ? (
+                  data.recentTransactions.map((transaction) => (
+                    <div key={transaction._id} className="flex items-center justify-between">
+                      <div className="flex items-center space-x-3">
+                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                          transaction.type === 'income' 
+                            ? 'bg-green-100 dark:bg-green-900/30' 
+                            : 'bg-red-100 dark:bg-red-900/30'
+                        }`}>
+                          {transaction.type === 'income' ? (
+                            <ArrowUpRight className="h-5 w-5 text-green-600 dark:text-green-400" />
+                          ) : (
+                            <ArrowDownRight className="h-5 w-5 text-red-600 dark:text-red-400" />
+                          )}
+                        </div>
+                        <div>
+                          <p className="font-medium text-gray-900 dark:text-gray-100">
+                            {transaction.description}
+                          </p>
+                          <p className="text-sm text-gray-500 dark:text-gray-400">
+                            {transaction.category?.name || 'Uncategorized'}
+                          </p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="font-medium text-gray-900 dark:text-gray-100">
-                          {transaction.description}
+                      <div className="text-right">
+                        <p className={`font-semibold ${
+                          transaction.type === 'income' 
+                            ? 'text-green-600 dark:text-green-400' 
+                            : 'text-red-600 dark:text-red-400'
+                        }`}>
+                          {transaction.type === 'income' ? '+' : '-'}
+                          {formatCurrency(transaction.baseCurrencyAmount || transaction.amount)}
                         </p>
                         <p className="text-sm text-gray-500 dark:text-gray-400">
-                          {transaction.category}
+                          {formatTransactionDate(transaction.date)}
                         </p>
                       </div>
                     </div>
-                    <div className="text-right">
-                      <p className={`font-semibold ${
-                        transaction.type === 'income' 
-                          ? 'text-green-600 dark:text-green-400' 
-                          : 'text-red-600 dark:text-red-400'
-                      }`}>
-                        {transaction.type === 'income' ? '+' : '-'}
-                        {formatCurrency(transaction.amount)}
-                      </p>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">
-                        {new Date(transaction.date).toLocaleDateString()}
-                      </p>
-                    </div>
+                  ))
+                ) : (
+                  <div className="text-center py-8">
+                    <p className="text-gray-500 dark:text-gray-400">No recent transactions</p>
+                    <Button variant="outline" size="sm" className="mt-2">
+                      <Plus className="h-4 w-4 mr-2" />
+                      Add your first transaction
+                    </Button>
                   </div>
-                ))}
+                )}
               </div>
             </div>
           </div>
@@ -228,17 +250,17 @@ const DashboardPage = () => {
                     Monthly Budget
                   </span>
                   <span className="text-sm text-gray-500 dark:text-gray-400">
-                    KSh 42,750 / KSh 50,000
+                    {formatCurrency(data.budgetSummary.totalSpent)} / {formatCurrency(data.budgetSummary.totalBudgeted)}
                   </span>
                 </div>
                 <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
                   <div 
-                    className="bg-primary-600 h-2 rounded-full" 
-                    style={{ width: '85.5%' }}
+                    className="bg-primary-600 h-2 rounded-full transition-all duration-300" 
+                    style={{ width: `${Math.min(100, data.budgetSummary.overallPercentage)}%` }}
                   ></div>
                 </div>
                 <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
-                  85.5% of monthly budget used
+                  {data.budgetSummary.overallPercentage.toFixed(1)}% of monthly budget used
                 </p>
               </div>
             </div>
