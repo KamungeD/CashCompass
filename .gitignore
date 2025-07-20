@@ -29,10 +29,14 @@ Week8-Assignment.md
 .env.development.local
 .env.test.local
 .env.production.local
+.env.production
 
 # Environment configuration files
 config.json
 secrets.json
+
+# Production configuration files (keep for reference but don't commit secrets)
+# .env.production (template only)
 
 # ==============================================
 # NODE MODULES & DEPENDENCIES
@@ -94,6 +98,14 @@ yarn-debug.log*
 yarn-error.log*
 lerna-debug.log*
 
+# Production logs
+backend/logs/
+error.log
+combined.log
+exceptions.log
+rejections.log
+pm2-*.log
+
 # Runtime data
 pids/
 *.pid
@@ -144,14 +156,31 @@ temp/
 # ==============================================
 # DEPLOYMENT & PRODUCTION
 # ==============================================
+# Build directories
+dist/
+build/
+out/
+
 # Deployment artifacts
 .vercel/
 .netlify/
 .serverless/
+.railway/
+
+# Production bundles
+*.tgz
+*.tar.gz
 
 # Docker
 .dockerignore
 docker-compose.override.yml
+
+# PM2
+ecosystem.config.production.js
+.pm2/
+
+# Monitoring and analytics
+.lighthouseci/
 
 # ==============================================
 # SECURITY & CERTIFICATES

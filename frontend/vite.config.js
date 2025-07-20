@@ -29,19 +29,39 @@ export default defineConfig({
   // Build configuration
   build: {
     outDir: 'dist',
-    sourcemap: true,
+    sourcemap: process.env.NODE_ENV === 'development',
     minify: 'terser',
-    target: 'es2015',
+    target: 'es2020',
+    cssCodeSplit: true,
     rollupOptions: {
       output: {
         manualChunks: {
           vendor: ['react', 'react-dom'],
           router: ['react-router-dom'],
-          ui: ['lucide-react', 'framer-motion'],
+          ui: ['lucide-react'],
           charts: ['recharts', 'chart.js', 'react-chartjs-2'],
           forms: ['react-hook-form', '@hookform/resolvers', 'yup'],
           utils: ['date-fns', 'clsx', 'tailwind-merge']
         },
+        assetFileNames: (assetInfo) => {
+          const info = assetInfo.name.split('.');
+          const ext = info[info.length - 1];
+          if (/png|jpe?g|svg|gif|tiff|bmp|ico/i.test(ext)) {
+            return `assets/images/[name]-[hash][extname]`;
+          }
+          if (/css/i.test(ext)) {
+            return `assets/css/[name]-[hash][extname]`;
+          }
+          return `assets/[name]-[hash][extname]`;
+        },
+        chunkFileNames: 'assets/js/[name]-[hash].js',
+        entryFileNames: 'assets/js/[name]-[hash].js',
+      },
+    },
+    terserOptions: {
+      compress: {
+        drop_console: process.env.NODE_ENV === 'production',
+        drop_debugger: process.env.NODE_ENV === 'production',
       },
     },
     chunkSizeWarningLimit: 1000,
@@ -69,9 +89,14 @@ export default defineConfig({
   
   // CSS configuration
   css: {
-    devSourcemap: true,
+    devSourcemap: process.env.NODE_ENV === 'development',
     modules: {
       localsConvention: 'camelCase',
+    },
+    preprocessorOptions: {
+      css: {
+        charset: false,
+      },
     },
   },
   
@@ -84,18 +109,24 @@ export default defineConfig({
       'axios',
       'react-hook-form',
       'date-fns',
-      'lucide-react',
+      'clsx',
+      'tailwind-merge'
     ],
+    exclude: ['lucide-react'],
   },
   
   // Preview server (for production preview)
   preview: {
-    port: 4173,
+    port: 3000,
     host: true,
+    strictPort: true,
   },
   
   // ESBuild configuration
   esbuild: {
     logOverride: { 'this-is-undefined-in-esm': 'silent' },
+    ...(process.env.NODE_ENV === 'production' && {
+      drop: ['console', 'debugger'],
+    }),
   },
 });

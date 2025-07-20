@@ -151,6 +151,9 @@ app.get('/', (req, res) => {
 // API routes
 app.use(`${apiPrefix}`, apiRoutes);
 
+// Health check for API
+app.use(`${apiPrefix}/health`, require('./routes/health'));
+
 // Catch-all for API documentation placeholder
 app.get(`${apiPrefix}/docs`, (req, res) => {
   res.status(200).json({
