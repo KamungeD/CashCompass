@@ -1,0 +1,43 @@
+{
+  "name": "cashcompass",
+  "version": "1.0.0",
+  "description": "CashCompass - Navigate your financial journey with intuitive expense tracking, smart budgeting, and visual insights",
+  "author": "Duncan Kamunge <kamunge@example.com> (https://github.com/KamungeD)",
+  "license": "MIT",
+  "private": true,
+  "workspaces": [
+    "backend",
+    "frontend"
+  ],
+  "scripts": {
+    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "dev:backend": "cd backend && npm run dev",
+    "dev:frontend": "cd frontend && npm run dev",
+    "install:all": "npm install && npm run install:backend && npm run install:frontend",
+    "install:backend": "cd backend && npm install",
+    "install:frontend": "cd frontend && npm install",
+    "test": "npm run test:backend && npm run test:frontend",
+    "test:backend": "cd backend && npm test",
+    "test:frontend": "cd frontend && npm test",
+    "build": "npm run build:frontend",
+    "build:frontend": "cd frontend && npm run build",
+    "start": "cd backend && npm start"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/KamungeD/cashcompass.git"
+  },
+  "keywords": [
+    "budgeting",
+    "finance",
+    "expense-tracking",
+    "mern-stack",
+    "react",
+    "nodejs",
+    "mongodb",
+    "tailwindcss"
+  ]
+}

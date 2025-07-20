@@ -1,0 +1,16 @@
+CashCompass Kenya.docx
+CashCompass-Pitch-Deck-Brief.md
+Development-Checklist.md
+Development-Plan.md
+
+
+# ===========================================
+# Keep these files (comments for clarity)
+# ===========================================
+
+# README.md - Project documentation
+# package.json - Dependency management
+# package-lock.json - Lock file for dependencies
+# .gitignore - This file
+# LICENSE - Project license
+# CHANGELOG.md - Version history
