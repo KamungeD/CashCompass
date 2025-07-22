@@ -113,6 +113,12 @@ export const transactionAPI = {
     return api.get(`/transactions?${params}`);
   },
   
+  // Alias for getAll - for compatibility
+  getTransactions: (filters = {}) => {
+    const params = new URLSearchParams(filters);
+    return api.get(`/transactions?${params}`);
+  },
+  
   // Get single transaction
   getById: (id) => api.get(`/transactions/${id}`),
   
@@ -129,26 +135,46 @@ export const transactionAPI = {
   getCategories: () => api.get('/categories'),
 };
 
+// Force reload - Transaction API methods are now available
+
 // Budget API functions
 export const budgetAPI = {
   // Get all budgets
-  getAll: () => api.get('/budgets'),
+  getAll: () => {
+    console.log('📊 Fetching budgets from API...');
+    return api.get('/budgets');
+  },
+  getBudgets: () => {
+    console.log('📊 Fetching budgets from API (alias)...');
+    return api.get('/budgets');
+  }, // Alias for getAll
   
   // Get single budget
   getById: (id) => api.get(`/budgets/${id}`),
   
   // Create new budget
-  create: (data) => api.post('/budgets', data),
+  create: (data) => {
+    console.log('🚀 Sending budget data to API:', data);
+    return api.post('/budgets', data);
+  },
+  createBudget: (data) => {
+    console.log('🚀 Sending budget data to API (alias):', data);
+    return api.post('/budgets', data);
+  }, // Alias for create
   
   // Update budget
   update: (id, data) => api.put(`/budgets/${id}`, data),
+  updateBudget: (id, data) => api.put(`/budgets/${id}`, data), // Alias for update
   
   // Delete budget
   delete: (id) => api.delete(`/budgets/${id}`),
+  deleteBudget: (id) => api.delete(`/budgets/${id}`), // Alias for delete
   
   // Get budget progress
   getProgress: (id) => api.get(`/budgets/${id}/progress`),
 };
+
+// Force reload - Budget API methods are now available
 
 // Auth API functions
 export const authAPI = {

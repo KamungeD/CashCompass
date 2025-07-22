@@ -53,12 +53,6 @@ const budgetSchema = new mongoose.Schema({
   endDate: {
     type: Date,
     required: [true, 'Budget end date is required'],
-    validate: {
-      validator: function(value) {
-        return value > this.startDate;
-      },
-      message: 'End date must be after start date'
-    },
     index: true
   },
   
@@ -357,6 +351,35 @@ const budgetSchema = new mongoose.Schema({
     }
   },
   toObject: { virtuals: true }
+});
+
+// Pre-validation hook for date validation
+budgetSchema.pre('validate', function(next) {
+  // Handle date validation for both new documents and updates
+  if (this.startDate && this.endDate) {
+    if (this.endDate <= this.startDate) {
+      const error = new Error('End date must be after start date');
+      error.name = 'ValidationError';
+      return next(error);
+    }
+  }
+  next();
+});
+
+// Pre-validation hook for updates specifically
+budgetSchema.pre(['findOneAndUpdate', 'updateOne', 'updateMany'], function(next) {
+  const update = this.getUpdate();
+  
+  // If both dates are being updated, validate them
+  if (update.startDate && update.endDate) {
+    if (new Date(update.endDate) <= new Date(update.startDate)) {
+      const error = new Error('End date must be after start date');
+      error.name = 'ValidationError';
+      return next(error);
+    }
+  }
+  
+  next();
 });
 
 // Indexes for performance

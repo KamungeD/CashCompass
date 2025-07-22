@@ -72,8 +72,16 @@ const AnalyticsPage = () => {
 
   // Filter transactions by date range with safety check
   const filteredTransactions = safeTransactions.filter(transaction => {
-    const transactionDate = parseISO(transaction.date);
-    return transactionDate >= startDate && transactionDate <= endDate;
+    try {
+      // Handle both string dates and Date objects
+      const transactionDate = transaction.date instanceof Date ? 
+        transaction.date : 
+        parseISO(transaction.date);
+      return transactionDate >= startDate && transactionDate <= endDate;
+    } catch (error) {
+      console.warn('Error parsing transaction date:', transaction.date, error);
+      return false;
+    }
   });
 
   // Analytics calculations
@@ -82,7 +90,9 @@ const AnalyticsPage = () => {
     filteredTransactions
       .filter(t => t.type === 'expense')
       .forEach(transaction => {
-        spending[transaction.category] = (spending[transaction.category] || 0) + transaction.amount;
+        // Handle both populated category objects and string category names
+        const categoryName = transaction.category?.name || transaction.category || 'Uncategorized';
+        spending[categoryName] = (spending[categoryName] || 0) + Math.abs(transaction.amount);
       });
     return Object.entries(spending)
       .map(([category, amount]) => ({ category, amount }))
@@ -94,7 +104,9 @@ const AnalyticsPage = () => {
     filteredTransactions
       .filter(t => t.type === 'income')
       .forEach(transaction => {
-        income[transaction.category] = (income[transaction.category] || 0) + transaction.amount;
+        // Handle both populated category objects and string category names
+        const categoryName = transaction.category?.name || transaction.category || 'Uncategorized';
+        income[categoryName] = (income[categoryName] || 0) + Math.abs(transaction.amount);
       });
     return Object.entries(income)
       .map(([category, amount]) => ({ category, amount }))
@@ -104,14 +116,21 @@ const AnalyticsPage = () => {
   const calculateMonthlyTrends = () => {
     const trends = {};
     filteredTransactions.forEach(transaction => {
-      const month = format(parseISO(transaction.date), 'MMM yyyy');
-      if (!trends[month]) {
-        trends[month] = { income: 0, expenses: 0 };
-      }
-      if (transaction.type === 'income') {
-        trends[month].income += transaction.amount;
-      } else {
-        trends[month].expenses += transaction.amount;
+      try {
+        const transactionDate = transaction.date instanceof Date ? 
+          transaction.date : 
+          parseISO(transaction.date);
+        const month = format(transactionDate, 'MMM yyyy');
+        if (!trends[month]) {
+          trends[month] = { income: 0, expenses: 0 };
+        }
+        if (transaction.type === 'income') {
+          trends[month].income += Math.abs(transaction.amount);
+        } else {
+          trends[month].expenses += Math.abs(transaction.amount);
+        }
+      } catch (error) {
+        console.warn('Error processing transaction for trends:', transaction, error);
       }
     });
     return Object.entries(trends)
@@ -120,8 +139,15 @@ const AnalyticsPage = () => {
   };
 
   const calculateBudgetAnalysis = () => {
-    const currentMonth = format(new Date(), 'yyyy-MM');
-    const currentBudget = safeBudgets.find(b => b.month === currentMonth && b.isActive);
+    const currentDate = new Date();
+    const currentBudget = safeBudgets.find(budget => {
+      if (!budget.isActive && budget.status !== 'active') return false;
+      
+      const startDate = new Date(budget.startDate);
+      const endDate = new Date(budget.endDate);
+      
+      return currentDate >= startDate && currentDate <= endDate;
+    });
     
     if (!currentBudget) return null;
 
@@ -129,18 +155,27 @@ const AnalyticsPage = () => {
     filteredTransactions
       .filter(t => t.type === 'expense')
       .forEach(transaction => {
-        spending[transaction.category] = (spending[transaction.category] || 0) + transaction.amount;
+        // Handle both populated category objects and string category names
+        const categoryName = transaction.category?.name || transaction.category || 'Uncategorized';
+        spending[categoryName] = (spending[categoryName] || 0) + Math.abs(transaction.amount);
       });
 
     return currentBudget.categories.map(category => {
-      const spent = spending[category.name] || 0;
-      const percentage = (spent / category.limit) * 100;
-      const status = percentage >= 100 ? 'over' : percentage >= category.alertThreshold ? 'warning' : 'good';
+      // Handle populated category objects - category.category should be populated with name
+      const categoryName = category.category?.name || 'Unknown Category';
+      const spent = spending[categoryName] || 0;
+      const budgetLimit = category.allocatedAmount || 0;
+      const alertThreshold = category.alertThreshold || 80;
+      const percentage = budgetLimit > 0 ? (spent / budgetLimit) * 100 : 0;
+      const status = percentage >= 100 ? 'over' : percentage >= alertThreshold ? 'warning' : 'good';
       
       return {
-        ...category,
+        name: categoryName,
+        limit: budgetLimit,
+        allocatedAmount: budgetLimit,
+        alertThreshold: alertThreshold,
         spent,
-        remaining: category.limit - spent,
+        remaining: budgetLimit - spent,
         percentage: Math.min(percentage, 100),
         status
       };
@@ -154,11 +189,11 @@ const AnalyticsPage = () => {
 
   const totalIncome = filteredTransactions
     .filter(t => t.type === 'income')
-    .reduce((sum, t) => sum + t.amount, 0);
+    .reduce((sum, t) => sum + Math.abs(t.amount), 0);
 
   const totalExpenses = filteredTransactions
     .filter(t => t.type === 'expense')
-    .reduce((sum, t) => sum + t.amount, 0);
+    .reduce((sum, t) => sum + Math.abs(t.amount), 0);
 
   const netAmount = totalIncome - totalExpenses;
 

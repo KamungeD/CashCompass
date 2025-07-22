@@ -303,11 +303,10 @@ const TransactionsPage = () => {
                               <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
                                 {transaction.description || 'No description'}
                               </div>
-                              <div className="text-sm text-gray-500 dark:text-gray-400">{transaction.type}
+                              <div className="text-sm text-gray-500 dark:text-gray-400">{transaction.type}</div>
                             </div>
                           </div>
-                        </div>
-                      </td>
+                        </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300">
                           {transaction.category?.icon && <span className="mr-1">{transaction.category.icon}</span>}

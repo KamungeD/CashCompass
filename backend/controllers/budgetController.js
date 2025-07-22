@@ -1,18 +1,86 @@
+const mongoose = require('mongoose');
 const { Budget, Category, Transaction } = require('../models');
 const { ErrorResponse } = require('../middleware/errorHandler');
+
+// Helper function to find or create category by name
+const findOrCreateCategoryByName = async (categoryName, categoryType, userId) => {
+  // First try to find existing category by name
+  let category = await Category.findOne({
+    name: { $regex: new RegExp(`^${categoryName}$`, 'i') },
+    $or: [
+      { user: userId },
+      { isSystem: true }
+    ]
+  });
+
+  if (!category) {
+    // Create new category if it doesn't exist
+    category = await Category.create({
+      name: categoryName.toLowerCase(),
+      type: categoryType,
+      user: userId,
+      icon: getCategoryIcon(categoryName),
+      color: getCategoryColor(categoryName)
+    });
+  }
+
+  return category;
+};
+
+// Helper function to get category icon based on name
+const getCategoryIcon = (categoryName) => {
+  const iconMap = {
+    'food': '🍕',
+    'transport': '🚗',
+    'utilities': '💡',
+    'entertainment': '🎬',
+    'shopping': '🛍️',
+    'healthcare': '🏥',
+    'rent': '🏠',
+    'insurance': '🛡️',
+    'education': '📚',
+    'travel': '✈️',
+    'business': '💼',
+    'other': '📝'
+  };
+  return iconMap[categoryName.toLowerCase()] || '📝';
+};
+
+// Helper function to get category color based on name
+const getCategoryColor = (categoryName) => {
+  const colorMap = {
+    'food': '#10b981',
+    'transport': '#3b82f6',
+    'utilities': '#f59e0b',
+    'entertainment': '#8b5cf6',
+    'shopping': '#ef4444',
+    'healthcare': '#06b6d4',
+    'rent': '#84cc16',
+    'insurance': '#6366f1',
+    'education': '#14b8a6',
+    'travel': '#f97316',
+    'business': '#0d9488',
+    'other': '#6b7280'
+  };
+  return colorMap[categoryName.toLowerCase()] || '#6b7280';
+};
 
 // @desc    Get all budgets for user
 // @route   GET /api/budgets
 // @access  Private
 const getBudgets = async (req, res, next) => {
   try {
+    console.log('📊 Get budgets request received');
+    console.log('👤 User ID:', req.user._id);
+    console.log('🔍 Query params:', req.query);
+    
     const {
       page = 1,
       limit = 10,
       status,
       type,
       period,
-      active = true,
+      active = 'false', // Changed default to false to get all budgets
       sort = '-createdAt'
     } = req.query;
 
@@ -25,7 +93,7 @@ const getBudgets = async (req, res, next) => {
     if (type) query.type = type;
     if (period) query.period = period;
 
-    // Filter for active budgets (current or future)
+    // Filter for active budgets (current or future) - only if explicitly requested
     if (active === 'true') {
       const now = new Date();
       query.$or = [
@@ -33,6 +101,8 @@ const getBudgets = async (req, res, next) => {
         { status: 'active', startDate: { $lte: now }, endDate: { $gte: now } }
       ];
     }
+    
+    console.log('🔍 MongoDB query:', JSON.stringify(query, null, 2));
 
     const budgets = await Budget.find(query)
       .populate('categories.category', 'name icon color type')
@@ -43,6 +113,10 @@ const getBudgets = async (req, res, next) => {
 
     const total = await Budget.countDocuments(query);
     const totalPages = Math.ceil(total / limit);
+    
+    console.log('📋 Found budgets count:', budgets.length);
+    console.log('📋 Total budgets in DB for user:', total);
+    console.log('📋 Budget data sample:', budgets.length > 0 ? budgets[0] : 'No budgets found');
 
     res.status(200).json({
       success: true,
@@ -121,6 +195,10 @@ const getBudget = async (req, res, next) => {
 // @access  Private
 const createBudget = async (req, res, next) => {
   try {
+    console.log('📋 Budget creation request received');
+    console.log('📝 Request body:', JSON.stringify(req.body, null, 2));
+    console.log('👤 User ID:', req.user._id);
+    
     // Check if budget name already exists for user
     const existingBudget = await Budget.findOne({
       name: req.body.name,
@@ -128,22 +206,58 @@ const createBudget = async (req, res, next) => {
     });
 
     if (existingBudget) {
-      return next(new ErrorResponse('Budget with this name already exists', 400));
+      // Suggest an alternative name
+      const timestamp = new Date().getTime();
+      const alternativeName = `${req.body.name} (${timestamp})`;
+      
+      console.log('❌ Budget name already exists:', req.body.name);
+      return next(new ErrorResponse(
+        `Budget with name "${req.body.name}" already exists. Try a different name or use: "${alternativeName}"`, 
+        400
+      ));
     }
 
-    // Validate categories if provided
+    // Validate required fields
+    if (!req.body.name || !req.body.amount || !req.body.startDate || !req.body.endDate) {
+      console.log('❌ Missing required fields:', {
+        name: !!req.body.name,
+        amount: !!req.body.amount,
+        startDate: !!req.body.startDate,
+        endDate: !!req.body.endDate
+      });
+      return next(new ErrorResponse('Missing required fields: name, amount, startDate, endDate', 400));
+    }
+
+    // Process categories - handle both ObjectId and name-based categories
+    let processedCategories = [];
+    
     if (req.body.categories && req.body.categories.length > 0) {
       for (const categoryData of req.body.categories) {
-        const category = await Category.findOne({
-          _id: categoryData.category,
-          $or: [
-            { user: req.user._id },
-            { isSystem: true }
-          ]
-        });
-
-        if (!category) {
-          return next(new ErrorResponse(`Category ${categoryData.category} not found`, 404));
+        let category;
+        
+        // Check if category is provided as ObjectId or name
+        if (mongoose.Types.ObjectId.isValid(categoryData.category)) {
+          // Handle ObjectId-based category
+          category = await Category.findOne({
+            _id: categoryData.category,
+            $or: [
+              { user: req.user._id },
+              { isSystem: true }
+            ]
+          });
+          
+          if (!category) {
+            return next(new ErrorResponse(`Category ${categoryData.category} not found`, 404));
+          }
+        } else if (categoryData.name) {
+          // Handle name-based category (from frontend form)
+          category = await findOrCreateCategoryByName(
+            categoryData.name, 
+            req.body.type || 'expense', 
+            req.user._id
+          );
+        } else {
+          return next(new ErrorResponse('Category must have either category ID or name', 400));
         }
 
         // Check if category type matches budget type
@@ -153,12 +267,20 @@ const createBudget = async (req, res, next) => {
         if (req.body.type === 'income' && category.type === 'expense') {
           return next(new ErrorResponse(`Category ${category.name} is for expenses, but budget is for income`, 400));
         }
+
+        processedCategories.push({
+          category: category._id,
+          allocatedAmount: categoryData.allocatedAmount,
+          spentAmount: 0,
+          remainingAmount: categoryData.allocatedAmount
+        });
       }
     }
 
-    // Create budget
+    // Create budget with processed categories
     const budgetData = {
       ...req.body,
+      categories: processedCategories,
       user: req.user._id
     };
 
@@ -186,6 +308,11 @@ const createBudget = async (req, res, next) => {
 // @access  Private
 const updateBudget = async (req, res, next) => {
   try {
+    console.log('🔄 Update budget request received');
+    console.log('📊 Budget ID:', req.params.id);
+    console.log('👤 User ID:', req.user._id);
+    console.log('📝 Request body:', JSON.stringify(req.body, null, 2));
+    
     const budget = await Budget.findOne({
       _id: req.params.id,
       user: req.user._id
@@ -208,21 +335,51 @@ const updateBudget = async (req, res, next) => {
       }
     }
 
-    // Validate categories if being updated
+    // Handle categories if being updated
+    let processedCategories = [];
     if (req.body.categories && req.body.categories.length > 0) {
+      console.log('📝 Processing categories for update:', req.body.categories);
+      
       for (const categoryData of req.body.categories) {
-        const category = await Category.findOne({
-          _id: categoryData.category,
-          $or: [
-            { user: req.user._id },
-            { isSystem: true }
-          ]
-        });
-
-        if (!category) {
-          return next(new ErrorResponse(`Category ${categoryData.category} not found`, 404));
+        console.log('🏷️ Processing category data:', categoryData);
+        
+        let category;
+        
+        // Check if category is provided as ObjectId (existing category reference)
+        if (categoryData.category && mongoose.Types.ObjectId.isValid(categoryData.category)) {
+          category = await Category.findOne({
+            _id: categoryData.category,
+            $or: [
+              { user: req.user._id },
+              { isSystem: true }
+            ]
+          });
+          
+          if (!category) {
+            return next(new ErrorResponse(`Category ${categoryData.category} not found`, 404));
+          }
         }
+        // Check if category is provided as name (new category or name reference)
+        else if (categoryData.name) {
+          console.log('🔍 Finding/creating category by name:', categoryData.name);
+          category = await findOrCreateCategoryByName(categoryData.name, 'expense', req.user._id);
+        }
+        else {
+          return next(new ErrorResponse('Category name or ID is required', 400));
+        }
+        
+        console.log('✅ Category resolved:', category.name, category._id);
+        
+        processedCategories.push({
+          category: category._id,
+          allocatedAmount: categoryData.allocatedAmount || categoryData.limit || 0,
+          alertThreshold: categoryData.alertThreshold || 80
+        });
       }
+      
+      // Update the request body with processed categories
+      req.body.categories = processedCategories;
+      console.log('📊 Final processed categories:', processedCategories);
     }
 
     // Add to history

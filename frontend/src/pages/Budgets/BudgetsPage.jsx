@@ -24,7 +24,27 @@ const BudgetsPage = () => {
   const [loading, setLoading] = useState(true);
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingBudget, setEditingBudget] = useState(null);
-  const [currentMonth] = useState(new Date());
+  const [currentMonth] = useState(() => {
+    try {
+      return new Date();
+    } catch (error) {
+      console.error('Error creating current month date:', error);
+      return new Date(2025, 6, 21); // Fallback to July 21, 2025
+    }
+  });
+
+  // Safe date formatting function - defined early to use throughout component
+  const safeDateFormat = (dateValue, formatString, fallback = 'Invalid Date') => {
+    try {
+      if (!dateValue) return fallback;
+      const date = new Date(dateValue);
+      if (isNaN(date.getTime())) return fallback;
+      return format(date, formatString);
+    } catch (error) {
+      console.warn('Date formatting error:', error);
+      return fallback;
+    }
+  };
 
   useEffect(() => {
     fetchBudgets();
@@ -32,48 +52,107 @@ const BudgetsPage = () => {
 
   const fetchBudgets = async () => {
     try {
+      console.log('🔄 Starting to fetch budgets...');
       setLoading(true);
+      
       const response = await budgetAPI.getBudgets();
-      const budgetsWithProgress = await calculateBudgetProgress(response.data.data);
+      console.log('📊 Budget API Response:', response);
+      console.log('📊 Response status:', response.status);
+      console.log('📊 Response data:', response.data);
+      
+      // Safely extract budgets array from response
+      const budgetData = response?.data?.data?.budgets || response?.data?.budgets || response?.data?.data || response?.data || [];
+      console.log('📋 Extracted Budget Data:', budgetData);
+      console.log('📋 Budget Data Type:', typeof budgetData);
+      console.log('📋 Is Array:', Array.isArray(budgetData));
+      
+      // Ensure budgetData is an array
+      const budgetArray = Array.isArray(budgetData) ? budgetData : [];
+      console.log('📋 Final Budget Array:', budgetArray);
+      console.log('📋 Budget Array Length:', budgetArray.length);
+      
+      const budgetsWithProgress = await calculateBudgetProgress(budgetArray);
+      console.log('📊 Budgets with Progress:', budgetsWithProgress);
       setBudgets(budgetsWithProgress);
     } catch (error) {
-      console.error('Error fetching budgets:', error);
+      console.error('❌ Error fetching budgets:', error);
+      console.error('❌ Error response:', error.response);
+      console.error('❌ Error message:', error.message);
       toast.error('Failed to load budgets');
+      // Set empty array on error to prevent map error
+      setBudgets([]);
     } finally {
       setLoading(false);
     }
   };
 
   const calculateBudgetProgress = async (budgetList) => {
-    const monthStart = startOfMonth(currentMonth);
-    const monthEnd = endOfMonth(currentMonth);
+    // Ensure budgetList is an array
+    if (!Array.isArray(budgetList)) {
+      console.warn('Budget list is not an array:', budgetList);
+      return [];
+    }
     
     try {
+      const monthStart = startOfMonth(currentMonth);
+      const monthEnd = endOfMonth(currentMonth);
+      
       const transactionsResponse = await transactionAPI.getTransactions({
-        dateFrom: format(monthStart, 'yyyy-MM-dd'),
-        dateTo: format(monthEnd, 'yyyy-MM-dd'),
+        dateFrom: safeDateFormat(monthStart, 'yyyy-MM-dd', '2025-07-01'),
+        dateTo: safeDateFormat(monthEnd, 'yyyy-MM-dd', '2025-07-31'),
         type: 'expense'
       });
       
-      const expenses = transactionsResponse.data.data;
+      const expenses = Array.isArray(transactionsResponse?.data?.data) ? transactionsResponse.data.data : [];
       
       return budgetList.map(budget => {
-        const categoriesWithProgress = budget.categories.map(category => {
-          const categoryExpenses = expenses.filter(exp => exp.category === category.name);
-          const spent = categoryExpenses.reduce((sum, exp) => sum + exp.amount, 0);
-          const percentage = category.limit > 0 ? (spent / category.limit) * 100 : 0;
+        console.log('🔍 Processing budget:', budget);
+        const categories = Array.isArray(budget?.categories) ? budget.categories : [];
+        console.log('📂 Budget categories:', categories);
+        
+        const categoriesWithProgress = categories.map(category => {
+          console.log('🏷️ Processing category:', category);
+          
+          // Handle different category data structures
+          const categoryName = category.category?.name || category.name || 'Unknown';
+          const allocatedAmount = category.allocatedAmount || category.limit || 0;
+          
+          console.log('📝 Category name:', categoryName, 'Allocated:', allocatedAmount);
+          
+          const categoryExpenses = expenses.filter(exp => {
+            // Try to match by category name or category ID
+            return exp.category === categoryName || 
+                   exp.category === category.category?._id ||
+                   exp.category?.name === categoryName;
+          });
+          
+          const spent = categoryExpenses.reduce((sum, exp) => sum + (exp.amount || 0), 0);
+          const percentage = allocatedAmount > 0 ? (spent / allocatedAmount) * 100 : 0;
+          
+          console.log('💰 Category:', categoryName, 'Spent:', spent, 'Allocated:', allocatedAmount, 'Percentage:', percentage);
           
           return {
             ...category,
+            name: categoryName,
+            limit: allocatedAmount, // Normalize to limit for consistency
+            allocatedAmount,
             spent,
             percentage: Math.min(percentage, 100),
             status: percentage >= 100 ? 'over' : percentage >= 80 ? 'warning' : 'good'
           };
         });
         
-        const totalSpent = categoriesWithProgress.reduce((sum, cat) => sum + cat.spent, 0);
-        const totalBudget = categoriesWithProgress.reduce((sum, cat) => sum + cat.limit, 0);
+        const totalSpent = categoriesWithProgress.reduce((sum, cat) => sum + (cat.spent || 0), 0);
+        const totalBudget = categoriesWithProgress.reduce((sum, cat) => sum + (cat.allocatedAmount || cat.limit || 0), 0);
         const overallPercentage = totalBudget > 0 ? (totalSpent / totalBudget) * 100 : 0;
+        
+        console.log('📊 Budget totals:', {
+          budgetName: budget.name,
+          totalSpent,
+          totalBudget,
+          overallPercentage,
+          categoriesCount: categoriesWithProgress.length
+        });
         
         return {
           ...budget,
@@ -98,7 +177,16 @@ const BudgetsPage = () => {
       fetchBudgets();
     } catch (error) {
       console.error('Error adding budget:', error);
-      toast.error('Failed to create budget');
+      
+      // Extract meaningful error message
+      let errorMessage = 'Failed to create budget';
+      if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      toast.error(errorMessage);
     }
   };
 
@@ -176,7 +264,7 @@ const BudgetsPage = () => {
               Budgets
             </h1>
             <p className="mt-2 text-gray-600 dark:text-gray-400">
-              Set spending limits and track your progress for {format(currentMonth, 'MMMM yyyy')}
+              Set spending limits and track your progress for {safeDateFormat(currentMonth, 'MMMM yyyy', 'this month')}
             </p>
           </div>
           <div className="mt-4 sm:mt-0">
@@ -214,20 +302,27 @@ const BudgetsPage = () => {
         </div>
       ) : (
         <div className="space-y-6">
-          {budgets.map((budget) => (
-            <div
-              key={budget._id}
-              className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6"
-            >
+          {Array.isArray(budgets) && budgets.length > 0 ? budgets.map((budget) => {
+            // Add safety checks for budget data
+            if (!budget || !budget._id) {
+              console.warn('Invalid budget data:', budget);
+              return null;
+            }
+
+            return (
+              <div
+                key={budget._id}
+                className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6"
+              >
               {/* Budget Header */}
               <div className="flex items-center justify-between mb-6">
                 <div>
                   <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
-                    {format(new Date(budget.month), 'MMMM yyyy')} Budget
+                    {budget.name || `${safeDateFormat(budget.startDate, 'MMMM yyyy', 'Monthly')} Budget`}
                   </h3>
                   <div className="flex items-center space-x-4 mt-2">
                     <span className="text-sm text-gray-600 dark:text-gray-400">
-                      {formatCurrency(budget.totalSpent || 0)} spent of {formatCurrency(budget.totalBudget || 0)}
+                      {formatCurrency(budget.totalSpent || 0)} spent of {formatCurrency(budget.totalBudget || budget.amount || 0)}
                     </span>
                     <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(budget.overallStatus)}`}>
                       {budget.overallStatus === 'good' && 'On Track'}
@@ -310,37 +405,47 @@ const BudgetsPage = () => {
                 </div>
               </div>
             </div>
-          ))}
+            );
+          }) : (
+            <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+              No budgets found. Create your first budget to get started!
+            </div>
+          )}
         </div>
       )}
 
       {/* Add/Edit Budget Modal */}
       {(showAddForm || editingBudget) && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-gray-800 rounded-lg max-w-2xl w-full max-h-90vh overflow-y-auto">
-            <div className="p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-                  {editingBudget ? 'Edit Budget' : 'Create Budget'}
-                </h3>
-                <button
-                  onClick={() => {
-                    setShowAddForm(false);
-                    setEditingBudget(null);
-                  }}
-                  className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-                >
-                  ×
-                </button>
-              </div>
-              <BudgetForm
-                initialData={editingBudget}
-                onSubmit={editingBudget ? handleEditBudget : handleAddBudget}
-                onCancel={() => {
+          <div className="bg-white dark:bg-gray-800 rounded-lg max-w-2xl w-full max-h-[90vh] flex flex-col shadow-xl">
+            {/* Fixed Header */}
+            <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                {editingBudget ? 'Edit Budget' : 'Create Budget'}
+              </h3>
+              <button
+                onClick={() => {
                   setShowAddForm(false);
                   setEditingBudget(null);
                 }}
-              />
+                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 text-xl font-bold w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+              >
+                ×
+              </button>
+            </div>
+            
+            {/* Scrollable Content */}
+            <div className="flex-1 overflow-y-auto">
+              <div className="p-6">
+                <BudgetForm
+                  initialData={editingBudget}
+                  onSubmit={editingBudget ? handleEditBudget : handleAddBudget}
+                  onCancel={() => {
+                    setShowAddForm(false);
+                    setEditingBudget(null);
+                  }}
+                />
+              </div>
             </div>
           </div>
         </div>

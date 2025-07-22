@@ -6,6 +6,7 @@ import Button from '../../common/Button/Button';
 import Input from '../../common/Input/Input';
 import { Plus, Trash2, Calendar, Target, DollarSign } from 'lucide-react';
 import { format, startOfMonth } from 'date-fns';
+import toast from 'react-hot-toast';
 
 const categorySchema = yup.object({
   name: yup.string().required('Category name is required'),
@@ -31,6 +32,34 @@ const defaultCategories = [
 ];
 
 const BudgetForm = ({ initialData, onSubmit, onCancel, isLoading = false }) => {
+  console.log('🔧 BudgetForm initialized with:', initialData);
+  
+  // Process initial categories for editing
+  const processedCategories = initialData?.categories ? 
+    initialData.categories.map(cat => ({
+      name: cat.category?.name || cat.name || 'Unknown',
+      limit: cat.allocatedAmount || cat.limit || 0,
+      alertThreshold: cat.alertThreshold || 80
+    })) :
+    [{ name: 'food', limit: 0, alertThreshold: 80 }];
+    
+  console.log('📂 Processed categories for form:', processedCategories);
+  
+  // Extract month from startDate if editing, otherwise use current month
+  const getInitialMonth = () => {
+    if (initialData?.startDate) {
+      const startDate = new Date(initialData.startDate);
+      return format(startDate, 'yyyy-MM');
+    } else if (initialData?.month) {
+      return initialData.month;
+    } else {
+      return format(startOfMonth(new Date()), 'yyyy-MM');
+    }
+  };
+  
+  const initialMonth = getInitialMonth();
+  console.log('📅 Initial month for form:', initialMonth);
+
   const { 
     register, 
     handleSubmit, 
@@ -41,8 +70,8 @@ const BudgetForm = ({ initialData, onSubmit, onCancel, isLoading = false }) => {
   } = useForm({
     resolver: yupResolver(schema),
     defaultValues: {
-      month: initialData?.month ? format(new Date(initialData.month), 'yyyy-MM') : format(startOfMonth(new Date()), 'yyyy-MM'),
-      categories: initialData?.categories || [{ name: 'food', limit: 0, alertThreshold: 80 }],
+      month: initialMonth,
+      categories: processedCategories,
       isActive: initialData?.isActive ?? true
     }
   });
@@ -67,15 +96,83 @@ const BudgetForm = ({ initialData, onSubmit, onCancel, isLoading = false }) => {
   };
 
   const handleFormSubmit = (data) => {
+    console.log('📝 Form submission started');
+    console.log('📝 Raw form data:', data);
+    console.log('📝 Initial data (for editing):', initialData);
+    
+    // Parse the month to create start and end dates (avoid timezone issues)
+    const monthDate = new Date(data.month + '-01');
+    console.log('📅 Month date created:', monthDate.toISOString());
+    
+    // Calculate start date (first day of month) - use UTC to avoid timezone issues
+    const startDate = new Date(Date.UTC(monthDate.getFullYear(), monthDate.getMonth(), 1, 0, 0, 0, 0));
+    
+    // Calculate end date (last day of month) - use UTC to avoid timezone issues
+    const endDate = new Date(Date.UTC(monthDate.getFullYear(), monthDate.getMonth() + 1, 0, 23, 59, 59, 999));
+    
+    console.log('📅 Calculated dates:', {
+      monthInput: data.month,
+      startDate: startDate.toISOString(),
+      endDate: endDate.toISOString(),
+      startDateValue: startDate.getTime(),
+      endDateValue: endDate.getTime(),
+      isValidRange: endDate > startDate,
+      timeDifference: endDate.getTime() - startDate.getTime()
+    });
+    
+    // Validate date range
+    if (endDate <= startDate) {
+      console.error('❌ Invalid date range:', { startDate, endDate });
+      toast.error('Invalid date range calculated');
+      return;
+    }
+    
+    // Generate budget name
+    const monthName = monthDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+    const baseName = `Budget for ${monthName}`;
+    const timestamp = new Date().getTime();
+    
+    // For editing: preserve original name unless explicitly changed
+    // For creating: use custom name or generate new name
+    let budgetName;
+    if (initialData) {
+      // Editing mode - preserve original name unless user provided custom name
+      budgetName = data.customName || initialData.name || baseName;
+    } else {
+      // Creating mode - use custom name or generate new name
+      budgetName = data.customName || `${baseName}`;
+    }
+    
+    console.log('📝 Budget name decision:', {
+      isEditing: !!initialData,
+      originalName: initialData?.name,
+      customName: data.customName,
+      finalName: budgetName
+    });
+    
     const formattedData = {
-      ...data,
+      name: budgetName,
+      amount: totalBudget,
+      period: 'monthly',
+      startDate: startDate.toISOString(),
+      endDate: endDate.toISOString(),
+      type: 'expense',
+      currency: 'KES',
       categories: data.categories.map(cat => ({
-        ...cat,
-        limit: parseFloat(cat.limit),
+        name: cat.name, // We'll handle category ObjectId creation on backend
+        allocatedAmount: parseFloat(cat.limit),
         alertThreshold: parseFloat(cat.alertThreshold)
       })),
-      totalBudget
+      // Keep original data for frontend use
+      month: data.month,
+      isActive: data.isActive,
+      // Add a fallback unique identifier for backend use
+      uniqueKey: `${data.month}-${timestamp}`
     };
+    
+    console.log('🔧 Formatted budget data:', formattedData);
+    console.log('💰 Total budget amount:', totalBudget);
+    console.log('📊 Categories:', formattedData.categories);
     onSubmit(formattedData);
   };
 
@@ -88,6 +185,28 @@ const BudgetForm = ({ initialData, onSubmit, onCancel, isLoading = false }) => {
 
   return (
     <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-6">
+      {/* Edit Budget Header */}
+      {initialData && (
+        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mb-6">
+          <div className="flex items-center gap-3">
+            <Target className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+            <div>
+              <h3 className="text-lg font-semibold text-blue-900 dark:text-blue-100">
+                Editing Budget: {initialData.name || 
+                  (initialData.startDate ? 
+                    `Budget for ${format(new Date(initialData.startDate), 'MMMM yyyy')}` : 
+                    'Unnamed Budget'
+                  )
+                }
+              </h3>
+              <p className="text-sm text-blue-700 dark:text-blue-300">
+                Make changes to your budget categories and amounts below
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+      
       {/* Budget Month */}
       <div className="relative">
         <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400 z-10" />
@@ -97,6 +216,17 @@ const BudgetForm = ({ initialData, onSubmit, onCancel, isLoading = false }) => {
           {...register('month')}
           error={errors.month?.message}
           className="pl-10"
+        />
+      </div>
+
+      {/* Custom Budget Name */}
+      <div>
+        <Input
+          label="Budget Name (Optional)"
+          placeholder="e.g., July 2025 Vacation Budget"
+          {...register('customName')}
+          error={errors.customName?.message}
+          helperText="Leave blank to auto-generate name based on month"
         />
       </div>
 
@@ -130,9 +260,14 @@ const BudgetForm = ({ initialData, onSubmit, onCancel, isLoading = false }) => {
       {/* Budget Categories */}
       <div>
         <div className="flex items-center justify-between mb-4">
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-            Budget Categories *
-          </label>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+              Budget Categories *
+            </label>
+            <span className="text-xs text-gray-500 dark:text-gray-400">
+              {fields.length} {fields.length === 1 ? 'category' : 'categories'} added
+            </span>
+          </div>
           <Button
             type="button"
             variant="outline"
@@ -145,7 +280,12 @@ const BudgetForm = ({ initialData, onSubmit, onCancel, isLoading = false }) => {
           </Button>
         </div>
 
-        <div className="space-y-4">
+        <div className="space-y-4 max-h-96 overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600 scrollbar-track-transparent">
+          {fields.length > 4 && (
+            <div className="text-xs text-gray-500 dark:text-gray-400 text-center py-1 bg-gray-100 dark:bg-gray-600 rounded">
+              Scroll down to see all categories
+            </div>
+          )}
           {fields.map((field, index) => (
             <div key={field.id} className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
               <div className="grid grid-cols-1 sm:grid-cols-12 gap-4 items-end">
@@ -273,7 +413,7 @@ const BudgetForm = ({ initialData, onSubmit, onCancel, isLoading = false }) => {
       </div>
 
       {/* Form Actions */}
-      <div className="flex flex-col sm:flex-row gap-3 pt-4">
+      <div className="flex flex-col sm:flex-row gap-3 pt-6 border-t border-gray-200 dark:border-gray-700 mt-8">
         <Button
           type="button"
           variant="outline"
