@@ -318,13 +318,17 @@ const BudgetForm = ({ initialData, onSubmit, onCancel, isLoading = false }) => {
                     Budget Limit (KES)
                   </label>
                   <div className="relative">
-                    <DollarSign className="absolute left-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    {watchedCategories?.[index]?.limit && watchedCategories[index].limit !== '' && (
+                      <DollarSign className="absolute left-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    )}
                     <input
                       type="number"
                       step="0.01"
                       min="0"
                       {...register(`categories.${index}.limit`)}
-                      className="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 pl-7 pr-3 py-2 text-sm text-gray-900 dark:text-gray-100"
+                      className={`w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 ${
+                        watchedCategories?.[index]?.limit && watchedCategories[index].limit !== '' ? 'pl-7' : 'pl-3'
+                      } pr-3 py-2 text-sm text-gray-900 dark:text-gray-100`}
                       placeholder="0.00"
                     />
                   </div>

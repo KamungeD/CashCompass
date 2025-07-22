@@ -13,7 +13,12 @@ export function cn(...inputs) {
 /**
  * Format currency value
  */
-export const formatCurrency = (amount, currency = 'KES') => {
+export const formatCurrency = (amount, currency = 'KES', hideSymbolForEmpty = false) => {
+  // If hideSymbolForEmpty is true and amount is 0, null, undefined, or empty string, return empty string
+  if (hideSymbolForEmpty && (!amount || amount === 0 || amount === '0' || amount === '')) {
+    return '';
+  }
+  
   return new Intl.NumberFormat('en-KE', {
     style: 'currency',
     currency: currency,

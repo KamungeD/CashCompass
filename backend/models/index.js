@@ -3,5 +3,6 @@ module.exports = {
   User: require('./User'),
   Transaction: require('./Transaction'),
   Category: require('./Category'),
-  Budget: require('./Budget')
+  Budget: require('./Budget'),
+  AnnualBudget: require('./AnnualBudget')
 };

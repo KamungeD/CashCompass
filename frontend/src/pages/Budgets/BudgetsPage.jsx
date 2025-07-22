@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { 
   Plus, 
   Target, 
@@ -20,6 +21,7 @@ import toast from 'react-hot-toast';
 
 const BudgetsPage = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [budgets, setBudgets] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showAddForm, setShowAddForm] = useState(false);
@@ -52,32 +54,20 @@ const BudgetsPage = () => {
 
   const fetchBudgets = async () => {
     try {
-      console.log('🔄 Starting to fetch budgets...');
       setLoading(true);
       
       const response = await budgetAPI.getBudgets();
-      console.log('📊 Budget API Response:', response);
-      console.log('📊 Response status:', response.status);
-      console.log('📊 Response data:', response.data);
       
       // Safely extract budgets array from response
       const budgetData = response?.data?.data?.budgets || response?.data?.budgets || response?.data?.data || response?.data || [];
-      console.log('📋 Extracted Budget Data:', budgetData);
-      console.log('📋 Budget Data Type:', typeof budgetData);
-      console.log('📋 Is Array:', Array.isArray(budgetData));
       
       // Ensure budgetData is an array
       const budgetArray = Array.isArray(budgetData) ? budgetData : [];
-      console.log('📋 Final Budget Array:', budgetArray);
-      console.log('📋 Budget Array Length:', budgetArray.length);
       
       const budgetsWithProgress = await calculateBudgetProgress(budgetArray);
-      console.log('📊 Budgets with Progress:', budgetsWithProgress);
       setBudgets(budgetsWithProgress);
     } catch (error) {
-      console.error('❌ Error fetching budgets:', error);
-      console.error('❌ Error response:', error.response);
-      console.error('❌ Error message:', error.message);
+      console.error('Error fetching budgets:', error);
       toast.error('Failed to load budgets');
       // Set empty array on error to prevent map error
       setBudgets([]);
@@ -106,18 +96,12 @@ const BudgetsPage = () => {
       const expenses = Array.isArray(transactionsResponse?.data?.data) ? transactionsResponse.data.data : [];
       
       return budgetList.map(budget => {
-        console.log('🔍 Processing budget:', budget);
         const categories = Array.isArray(budget?.categories) ? budget.categories : [];
-        console.log('📂 Budget categories:', categories);
         
         const categoriesWithProgress = categories.map(category => {
-          console.log('🏷️ Processing category:', category);
-          
           // Handle different category data structures
           const categoryName = category.category?.name || category.name || 'Unknown';
           const allocatedAmount = category.allocatedAmount || category.limit || 0;
-          
-          console.log('📝 Category name:', categoryName, 'Allocated:', allocatedAmount);
           
           const categoryExpenses = expenses.filter(exp => {
             // Try to match by category name or category ID
@@ -128,8 +112,6 @@ const BudgetsPage = () => {
           
           const spent = categoryExpenses.reduce((sum, exp) => sum + (exp.amount || 0), 0);
           const percentage = allocatedAmount > 0 ? (spent / allocatedAmount) * 100 : 0;
-          
-          console.log('💰 Category:', categoryName, 'Spent:', spent, 'Allocated:', allocatedAmount, 'Percentage:', percentage);
           
           return {
             ...category,
@@ -145,14 +127,6 @@ const BudgetsPage = () => {
         const totalSpent = categoriesWithProgress.reduce((sum, cat) => sum + (cat.spent || 0), 0);
         const totalBudget = categoriesWithProgress.reduce((sum, cat) => sum + (cat.allocatedAmount || cat.limit || 0), 0);
         const overallPercentage = totalBudget > 0 ? (totalSpent / totalBudget) * 100 : 0;
-        
-        console.log('📊 Budget totals:', {
-          budgetName: budget.name,
-          totalSpent,
-          totalBudget,
-          overallPercentage,
-          categoriesCount: categoriesWithProgress.length
-        });
         
         return {
           ...budget,
@@ -267,7 +241,7 @@ const BudgetsPage = () => {
               Set spending limits and track your progress for {safeDateFormat(currentMonth, 'MMMM yyyy', 'this month')}
             </p>
           </div>
-          <div className="mt-4 sm:mt-0">
+          <div className="mt-4 sm:mt-0 flex space-x-3">
             <Button
               variant="primary"
               size="md"
@@ -276,6 +250,15 @@ const BudgetsPage = () => {
             >
               <Plus className="h-4 w-4" />
               <span>Create Budget</span>
+            </Button>
+            <Button
+              variant="secondary"
+              size="md"
+              onClick={() => navigate('/annual-budget')}
+              className="flex items-center space-x-2 bg-green-600 hover:bg-green-700 text-white"
+            >
+              <Plus className="h-4 w-4" />
+              <span>Annual Budget</span>
             </Button>
           </div>
         </div>

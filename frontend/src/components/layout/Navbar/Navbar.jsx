@@ -5,6 +5,7 @@ import {
   CreditCard, 
   PieChart, 
   Target, 
+  Calendar,
   Settings, 
   LogOut,
   User,
@@ -23,8 +24,9 @@ const Navbar = () => {
   const navigation = [
     { name: 'Dashboard', href: '/dashboard', icon: Home },
     { name: 'Transactions', href: '/transactions', icon: CreditCard },
-    { name: 'Analytics', href: '/analytics', icon: PieChart },
     { name: 'Budgets', href: '/budgets', icon: Target },
+    { name: 'Annual Budget', href: '/annual-budget', icon: Calendar },
+    { name: 'Analytics', href: '/analytics', icon: PieChart },
   ];
 
   const isActive = (path) => location.pathname === path;

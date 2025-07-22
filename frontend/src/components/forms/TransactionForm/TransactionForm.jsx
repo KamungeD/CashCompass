@@ -72,6 +72,7 @@ const TransactionForm = ({ initialData, onSubmit, onCancel, isLoading = false })
   });
 
   const transactionType = watch('type');
+  const amount = watch('amount');
 
   const handleTypeChange = (type) => {
     setSelectedType(type);
@@ -141,7 +142,9 @@ const TransactionForm = ({ initialData, onSubmit, onCancel, isLoading = false })
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {/* Amount */}
         <div className="relative">
-          <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400 z-10" />
+          {amount && amount !== '' && (
+            <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400 z-10" />
+          )}
           <Input
             label="Amount *"
             type="number"
@@ -149,7 +152,7 @@ const TransactionForm = ({ initialData, onSubmit, onCancel, isLoading = false })
             placeholder="0.00"
             {...register('amount')}
             error={errors.amount?.message}
-            className="pl-10"
+            className={amount && amount !== '' ? "pl-10" : ""}
           />
         </div>
 

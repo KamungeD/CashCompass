@@ -61,6 +61,13 @@ export const AuthProvider = ({ children }) => {
       
       return { success: true };
     } catch (error) {
+      // Handle rate limiting with user-friendly message
+      if (error.response?.status === 429 || error.userMessage) {
+        const message = error.userMessage || 'Too many login attempts. Please wait a moment and try again.';
+        toast.error(message);
+        return { success: false, error: message };
+      }
+      
       const message = error.response?.data?.message || 'Login failed';
       toast.error(message);
       return { success: false, error: message };
@@ -87,6 +94,13 @@ export const AuthProvider = ({ children }) => {
       
       return { success: true };
     } catch (error) {
+      // Handle rate limiting with user-friendly message
+      if (error.response?.status === 429 || error.userMessage) {
+        const message = error.userMessage || 'Too many registration attempts. Please wait a moment and try again.';
+        toast.error(message);
+        return { success: false, error: message };
+      }
+      
       const message = error.response?.data?.message || 'Registration failed';
       toast.error(message);
       return { success: false, error: message };

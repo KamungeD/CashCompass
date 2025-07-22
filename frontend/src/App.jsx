@@ -13,6 +13,7 @@ const DashboardPage = lazy(() => import('./pages/Dashboard/DashboardPage'));
 const TransactionsPage = lazy(() => import('./pages/Transactions/TransactionsPage'));
 const BudgetsPage = lazy(() => import('./pages/Budgets/BudgetsPage'));
 const AnalyticsPage = lazy(() => import('./pages/Analytics/AnalyticsPage'));
+const AnnualBudgetPage = lazy(() => import('./pages/AnnualBudget/AnnualBudgetPage'));
 
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
@@ -94,6 +95,15 @@ const AppRoutes = () => {
             element={
               <ProtectedRoute>
                 <AnalyticsPage />
+              </ProtectedRoute>
+            } 
+          />
+          
+          <Route 
+            path="/annual-budget" 
+            element={
+              <ProtectedRoute>
+                <AnnualBudgetPage />
               </ProtectedRoute>
             } 
           />

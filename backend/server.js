@@ -8,6 +8,7 @@ const mongoSanitize = require('express-mongo-sanitize');
 const xss = require('xss-clean');
 const hpp = require('hpp');
 const rateLimit = require('express-rate-limit');
+// Restart trigger v2
 // Restart
 const cookieParser = require('cookie-parser');
 const colors = require('colors');
@@ -76,7 +77,9 @@ app.use(cors(corsOptions));
 // Rate limiting
 const limiter = rateLimit({
   windowMs: process.env.RATE_LIMIT_WINDOW_MS || 15 * 60 * 1000, // 15 minutes
-  max: process.env.RATE_LIMIT_MAX_REQUESTS || 100, // limit each IP to 100 requests per windowMs
+  max: process.env.NODE_ENV === 'development' 
+    ? 1000 // Much higher limit for development
+    : (process.env.RATE_LIMIT_MAX_REQUESTS || 100), // production limit
   message: {
     error: 'Too many requests from this IP, please try again later.',
     statusCode: 429
