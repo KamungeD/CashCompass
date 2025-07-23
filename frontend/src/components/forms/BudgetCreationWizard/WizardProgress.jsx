@@ -6,9 +6,10 @@ const WizardProgress = ({ currentStep, totalSteps, onStepClick }) => {
     { number: 1, title: 'Priority', description: 'Your financial goal' },
     { number: 2, title: 'Income', description: 'Income sources' },
     { number: 3, title: 'Profile', description: 'Personal details' },
-    { number: 4, title: 'Recommendations', description: 'Expert suggestions' },
-    { number: 5, title: 'Review', description: 'Customize budget' },
-    { number: 6, title: 'Complete', description: 'Finalize & save' }
+    { number: 4, title: 'Categories', description: 'Budget categories' },
+    { number: 5, title: 'Recommendations', description: 'Expert suggestions' },
+    { number: 6, title: 'Review', description: 'Customize budget' },
+    { number: 7, title: 'Complete', description: 'Finalize & save' }
   ];
 
   const getStepStatus = (stepNumber) => {

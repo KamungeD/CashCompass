@@ -7,6 +7,7 @@ import toast from 'react-hot-toast';
 import PrioritySelection from './steps/PrioritySelection';
 import IncomeCollection from './steps/IncomeCollection';
 import PersonalProfile from './steps/PersonalProfile';
+import CategorySelection from './steps/CategorySelection';
 import RecommendationOffer from './steps/RecommendationOffer';
 import BudgetReview from './steps/BudgetReview';
 import Confirmation from './steps/Confirmation';
@@ -18,13 +19,14 @@ const BudgetCreationWizard = ({ onComplete, onCancel }) => {
   const { user } = useAuth();
   const [currentStep, setCurrentStep] = useState(1);
   const [loading, setLoading] = useState(false);
-  const totalSteps = 6;
+  const totalSteps = 7;
 
   // Wizard state
   const [wizardData, setWizardData] = useState({
     priority: null,
     incomes: [],
     profile: {},
+    selectedCategories: {},
     useRecommendations: null,
     budget: {
       categories: [],
@@ -117,7 +119,8 @@ const BudgetCreationWizard = ({ onComplete, onCancel }) => {
       const recommendationRequest = {
         income: totalIncome,
         priority: wizardData.priority,
-        profile: wizardData.profile
+        profile: wizardData.profile,
+        selectedCategories: wizardData.selectedCategories
       };
 
       const response = await annualBudgetAPI.generateRecommendations(recommendationRequest);
@@ -195,15 +198,17 @@ const BudgetCreationWizard = ({ onComplete, onCancel }) => {
       case 3:
         return <PersonalProfile {...commonProps} />;
       case 4:
+        return <CategorySelection {...commonProps} />;
+      case 5:
         return (
           <RecommendationOffer 
             {...commonProps} 
             generateRecommendedBudget={generateRecommendedBudget}
           />
         );
-      case 5:
-        return <BudgetReview {...commonProps} />;
       case 6:
+        return <BudgetReview {...commonProps} />;
+      case 7:
         return (
           <Confirmation 
             {...commonProps} 

@@ -1,6 +1,179 @@
 const AnnualBudget = require('../models/AnnualBudget');
 const Transaction = require('../models/Transaction');
 
+// Helper function to generate budget allocations for selected categories
+const generateSelectedCategoryBudgets = (selectedCategories, essentialAmount, lifestyleAmount, savingsAmount) => {
+  const categories = [];
+  
+  // Category budget allocation mapping
+  const categoryAllocations = {
+    'Housing': {
+      type: 'essential',
+      percentage: 0.75, // 75% of essential budget
+      subcategoryWeights: {
+        'Rent/Mortgage': 0.7,
+        'Utilities': 0.15,
+        'Phone': 0.05,
+        'Internet': 0.05,
+        'Supplies Shopping': 0.03,
+        'Rental Management': 0.02
+      }
+    },
+    'Transportation': {
+      type: 'essential',
+      percentage: 0.15, // 15% of essential budget
+      subcategoryWeights: {
+        'Fuel': 0.5,
+        'Bus/taxi fare': 0.3,
+        'Insurance': 0.15,
+        'Licensing': 0.05
+      }
+    },
+    'Food': {
+      type: 'mixed', // Both essential and lifestyle
+      essentialPercentage: 0.1, // 10% of essential budget for groceries
+      lifestylePercentage: 0.3, // 30% of lifestyle budget for dining
+      subcategoryWeights: {
+        'Groceries Shopping': { type: 'essential', weight: 0.8 },
+        'Water': { type: 'essential', weight: 0.2 },
+        'Dining out': { type: 'lifestyle', weight: 0.5 },
+        'Office lunch': { type: 'lifestyle', weight: 0.3 },
+        'Energy drinks': { type: 'lifestyle', weight: 0.2 }
+      }
+    },
+    'Personal Care': {
+      type: 'mixed',
+      essentialPercentage: 0.05, // 5% of essential budget
+      lifestylePercentage: 0.2, // 20% of lifestyle budget
+      subcategoryWeights: {
+        'Medical': { type: 'essential', weight: 0.6 },
+        'Grooming Shopping': { type: 'essential', weight: 0.4 },
+        'Hair/nails': { type: 'lifestyle', weight: 0.3 },
+        'Clothing': { type: 'lifestyle', weight: 0.4 },
+        'Haircare Products': { type: 'lifestyle', weight: 0.15 },
+        'Skincare Products': { type: 'lifestyle', weight: 0.15 }
+      }
+    },
+    'Insurance': {
+      type: 'essential',
+      percentage: 0.05, // 5% of essential budget
+      subcategoryWeights: {
+        'Health': 1.0
+      }
+    },
+    'Loans': {
+      type: 'essential',
+      percentage: 0.0, // Calculated based on actual debt
+      subcategoryWeights: {
+        'Mortgage': 0.7,
+        'Personal Loans': 0.2,
+        'Student Loans': 0.1
+      }
+    },
+    'Entertainment': {
+      type: 'lifestyle',
+      percentage: 0.4, // 40% of lifestyle budget
+      subcategoryWeights: {
+        'Streaming Services': 0.2,
+        'Dates': 0.3,
+        'Cinema': 0.2,
+        'Hobbies': 0.2,
+        'Music Subscriptions': 0.1
+      }
+    },
+    'Pets': {
+      type: 'lifestyle',
+      percentage: 0.1, // 10% of lifestyle budget
+      subcategoryWeights: {
+        'Food': 0.5,
+        'Medical': 0.3,
+        'Grooming': 0.15,
+        'Toys': 0.05
+      }
+    },
+    'Savings/Investments': {
+      type: 'savings',
+      percentage: 1.0, // 100% of savings budget
+      subcategoryWeights: {
+        'Emergency Fund': 0.5,
+        'Retirement account': 0.3,
+        'Investment account': 0.15,
+        'Annual Payments Fund': 0.05
+      }
+    }
+  };
+
+  // Process each selected category
+  Object.entries(selectedCategories || {}).forEach(([categoryName, categoryData]) => {
+    if (!categoryData.selected) return;
+    
+    const allocation = categoryAllocations[categoryName];
+    if (!allocation) return;
+
+    // Calculate category budget based on type
+    let categoryBudget = 0;
+    if (allocation.type === 'essential') {
+      categoryBudget = essentialAmount * allocation.percentage;
+    } else if (allocation.type === 'lifestyle') {
+      categoryBudget = lifestyleAmount * allocation.percentage;
+    } else if (allocation.type === 'savings') {
+      categoryBudget = savingsAmount * allocation.percentage;
+    } else if (allocation.type === 'mixed') {
+      // Mixed categories split between essential and lifestyle
+      const essentialPart = essentialAmount * (allocation.essentialPercentage || 0);
+      const lifestylePart = lifestyleAmount * (allocation.lifestylePercentage || 0);
+      categoryBudget = essentialPart + lifestylePart;
+    }
+
+    // Get selected subcategories
+    const selectedSubcategories = Object.entries(categoryData.subcategories || {})
+      .filter(([_, isSelected]) => isSelected)
+      .map(([name, _]) => name);
+
+    if (selectedSubcategories.length === 0) return;
+
+    // Distribute budget among selected subcategories
+    const totalWeight = selectedSubcategories.reduce((sum, subcat) => {
+      const weight = allocation.subcategoryWeights[subcat];
+      if (typeof weight === 'object') {
+        return sum + weight.weight;
+      }
+      return sum + (weight || 0);
+    }, 0);
+
+    selectedSubcategories.forEach(subcategoryName => {
+      const weight = allocation.subcategoryWeights[subcategoryName];
+      let subcategoryWeight = 0;
+      let subcategoryBudget = 0;
+
+      if (typeof weight === 'object') {
+        subcategoryWeight = weight.weight;
+        // For mixed categories, calculate budget based on subcategory type
+        if (weight.type === 'essential') {
+          subcategoryBudget = (essentialAmount * (allocation.essentialPercentage || 0)) * (subcategoryWeight / totalWeight);
+        } else if (weight.type === 'lifestyle') {
+          subcategoryBudget = (lifestyleAmount * (allocation.lifestylePercentage || 0)) * (subcategoryWeight / totalWeight);
+        }
+      } else {
+        subcategoryWeight = weight || (1 / selectedSubcategories.length);
+        subcategoryBudget = categoryBudget * (subcategoryWeight / totalWeight);
+      }
+
+      if (subcategoryBudget > 0) {
+        categories.push({
+          category: categoryName,
+          subcategory: subcategoryName,
+          monthlyBudget: Math.round(subcategoryBudget / 12),
+          annualBudget: Math.round(subcategoryBudget),
+          isEssential: allocation.type === 'essential' || (typeof weight === 'object' && weight.type === 'essential')
+        });
+      }
+    });
+  });
+
+  return categories;
+};
+
 // Default budget template based on the CSV data
 const DEFAULT_BUDGET_TEMPLATE = [
   // Housing
@@ -372,7 +545,7 @@ exports.getBudgetTemplate = async (req, res) => {
 // Generate budget recommendations based on user input
 exports.generateBudgetRecommendations = async (req, res) => {
   try {
-    const { income, priority, profile } = req.body;
+    const { income, priority, profile, selectedCategories } = req.body;
 
     if (!income || income <= 0) {
       return res.status(400).json({
@@ -433,91 +606,13 @@ exports.generateBudgetRecommendations = async (req, res) => {
     const lifestyleAmount = income * lifestylePercentage;
     const savingsAmount = income * savingsPercentage;
 
-    // Generate category recommendations
-    const categories = [
-      // Essential Categories
-      {
-        category: 'Housing',
-        subcategory: 'Rent/Mortgage',
-        monthlyBudget: Math.round((essentialAmount * 0.6) / 12),
-        annualBudget: Math.round(essentialAmount * 0.6),
-        isEssential: true
-      },
-      {
-        category: 'Housing',
-        subcategory: 'Utilities',
-        monthlyBudget: Math.round((essentialAmount * 0.15) / 12),
-        annualBudget: Math.round(essentialAmount * 0.15),
-        isEssential: true
-      },
-      {
-        category: 'Transportation',
-        subcategory: 'Transport Costs',
-        monthlyBudget: Math.round((essentialAmount * 0.15) / 12),
-        annualBudget: Math.round(essentialAmount * 0.15),
-        isEssential: true
-      },
-      {
-        category: 'Food',
-        subcategory: 'Groceries',
-        monthlyBudget: Math.round((essentialAmount * 0.1) / 12),
-        annualBudget: Math.round(essentialAmount * 0.1),
-        isEssential: true
-      },
-
-      // Lifestyle Categories
-      {
-        category: 'Entertainment',
-        subcategory: 'Entertainment & Hobbies',
-        monthlyBudget: Math.round((lifestyleAmount * 0.4) / 12),
-        annualBudget: Math.round(lifestyleAmount * 0.4),
-        isEssential: false
-      },
-      {
-        category: 'Food',
-        subcategory: 'Dining Out',
-        monthlyBudget: Math.round((lifestyleAmount * 0.3) / 12),
-        annualBudget: Math.round(lifestyleAmount * 0.3),
-        isEssential: false
-      },
-      {
-        category: 'Personal Care',
-        subcategory: 'Personal Care',
-        monthlyBudget: Math.round((lifestyleAmount * 0.2) / 12),
-        annualBudget: Math.round(lifestyleAmount * 0.2),
-        isEssential: false
-      },
-      {
-        category: 'Miscellaneous',
-        subcategory: 'Fun Money',
-        monthlyBudget: Math.round((lifestyleAmount * 0.1) / 12),
-        annualBudget: Math.round(lifestyleAmount * 0.1),
-        isEssential: false
-      },
-
-      // Savings Categories
-      {
-        category: 'Emergency Fund',
-        subcategory: 'Emergency Savings',
-        monthlyBudget: Math.round((savingsAmount * 0.5) / 12),
-        annualBudget: Math.round(savingsAmount * 0.5),
-        isEssential: true
-      },
-      {
-        category: 'Short-term Goals',
-        subcategory: 'Short-term Savings',
-        monthlyBudget: Math.round((savingsAmount * 0.3) / 12),
-        annualBudget: Math.round(savingsAmount * 0.3),
-        isEssential: false
-      },
-      {
-        category: 'Long-term Goals',
-        subcategory: 'Long-term Investments',
-        monthlyBudget: Math.round((savingsAmount * 0.2) / 12),
-        annualBudget: Math.round(savingsAmount * 0.2),
-        isEssential: false
-      }
-    ];
+    // Generate category recommendations based on selected categories
+    const categories = generateSelectedCategoryBudgets(
+      selectedCategories, 
+      essentialAmount, 
+      lifestyleAmount, 
+      savingsAmount
+    );
 
     const totalAllocated = categories.reduce((sum, cat) => sum + cat.annualBudget, 0);
 

@@ -7,7 +7,9 @@ import {
   CheckCircle,
   ChevronRight, 
   ChevronLeft,
-  Loader2
+  Loader2,
+  Settings,
+  Grid3X3
 } from 'lucide-react';
 import Button from '../../../common/Button/Button';
 import { formatCurrency } from '../../../../utils/helpers';
@@ -28,6 +30,19 @@ const RecommendationOffer = ({
       const annualAmount = income.frequency === 'monthly' ? amount * 12 : amount;
       return total + annualAmount;
     }, 0);
+  };
+
+  const getSelectedCategoriesInfo = () => {
+    const selectedCategories = wizardData.selectedCategories || {};
+    let categoryCount = 0;
+    let subcategoryCount = 0;
+    
+    Object.values(selectedCategories).forEach(category => {
+      if (category.selected) categoryCount++;
+      subcategoryCount += Object.values(category.subcategories || {}).filter(Boolean).length;
+    });
+    
+    return { categories: categoryCount, subcategories: subcategoryCount };
   };
 
   const getPriorityText = () => {
@@ -71,25 +86,32 @@ const RecommendationOffer = ({
   };
 
   const totalIncome = calculateTotalIncome();
+  const selectedInfo = getSelectedCategoriesInfo();
 
   const benefits = [
+    {
+      icon: Grid3X3,
+      title: 'Customized to your preferences',
+      description: `Includes only your selected ${selectedInfo.categories} categories and ${selectedInfo.subcategories} subcategories`,
+      color: 'blue'
+    },
     {
       icon: Target,
       title: 'Accounts for your income level',
       description: `Tailored to your ${formatCurrency(totalIncome)} annual income`,
-      color: 'blue'
+      color: 'green'
     },
     {
       icon: TrendingUp,
       title: 'Aligned with your financial priority',
       description: `Optimized to help you ${getPriorityText()}`,
-      color: 'green'
+      color: 'purple'
     },
     {
       icon: Shield,
       title: 'Based on your personal profile',
       description: 'Considers your life stage and living situation',
-      color: 'purple'
+      color: 'indigo'
     },
     {
       icon: CheckCircle,
@@ -181,6 +203,20 @@ const RecommendationOffer = ({
         <p className="text-center text-sm text-gray-600 dark:text-gray-400 mt-4">
           *Adjusted based on your priority and personal situation
         </p>
+      </div>
+
+      {/* Category Customization Option */}
+      <div className="text-center mb-8">
+        <button
+          onClick={() => {
+            // Go back to category selection (step 4)
+            goToPreviousStep();
+          }}
+          className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 text-sm font-medium underline flex items-center justify-center space-x-1"
+        >
+          <Settings className="h-4 w-4" />
+          <span>Modify category selections ({selectedInfo.categories} categories, {selectedInfo.subcategories} subcategories)</span>
+        </button>
       </div>
 
       {/* Action Buttons */}
