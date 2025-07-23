@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Calendar,
   TrendingUp,
@@ -13,171 +13,18 @@ import {
   AlertTriangle,
   CheckCircle,
   Clock,
-  Save,
-  X
+  Trash2
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { annualBudgetAPI } from '../../services/api';
 import Button from '../../components/common/Button/Button';
 import LoadingSpinner from '../../components/common/LoadingSpinner/LoadingSpinner';
-import Input from '../../components/common/Input/Input';
+import DeleteConfirmation from '../../components/common/DeleteConfirmation/DeleteConfirmation';
 import AnnualBudgetForm from '../../components/forms/AnnualBudgetForm/AnnualBudgetForm';
+import BudgetCreationWizard from '../../components/forms/BudgetCreationWizard/BudgetCreationWizard';
 import toast from 'react-hot-toast';
 import { format } from 'date-fns';
-
-// Category Edit Form Component
-const CategoryEditForm = ({ category, subcategories, onSave, onCancel, isLoading }) => {
-  const [budgetData, setBudgetData] = useState(() => {
-    const data = {};
-    subcategories.forEach(subcat => {
-      const key = `${subcat.category}-${subcat.subcategory}`;
-      data[key] = {
-        monthlyBudget: subcat.monthlyBudget || 0,
-        annualBudget: subcat.annualBudget || 0
-      };
-    });
-    return data;
-  });
-
-  const handleBudgetChange = (subcategory, field, value) => {
-    const key = `${category}-${subcategory}`;
-    setBudgetData(prev => {
-      const updated = { ...prev };
-      updated[key] = { ...updated[key] };
-      updated[key][field] = Number(value) || 0;
-      
-      // Auto-calculate annual from monthly
-      if (field === 'monthlyBudget') {
-        updated[key]['annualBudget'] = (Number(value) || 0) * 12;
-      }
-      // Auto-calculate monthly from annual
-      else if (field === 'annualBudget') {
-        updated[key]['monthlyBudget'] = (Number(value) || 0) / 12;
-      }
-      
-      return updated;
-    });
-  };
-
-  const handleSave = () => {
-    const updatedCategories = Object.entries(budgetData).map(([key, budget]) => {
-      const [cat, subcat] = key.split('-');
-      return {
-        category: cat,
-        subcategory: subcat,
-        monthlyBudget: budget.monthlyBudget,
-        annualBudget: budget.annualBudget,
-        isRecurring: true
-      };
-    });
-    onSave(updatedCategories);
-  };
-
-  const formatCurrency = (amount) => {
-    return new Intl.NumberFormat('en-KE', {
-      style: 'currency',
-      currency: 'KES'
-    }).format(amount || 0);
-  };
-
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto">
-        <div className="p-6 border-b border-gray-200 dark:border-gray-700">
-          <div className="flex items-center justify-between">
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
-              Edit {category} Budget
-            </h2>
-            <Button
-              onClick={onCancel}
-              variant="ghost"
-              size="sm"
-              className="text-gray-500 hover:text-gray-700"
-            >
-              <X className="h-5 w-5" />
-            </Button>
-          </div>
-        </div>
-        
-        <div className="p-6 space-y-4">
-          {subcategories.map((subcat) => {
-            const key = `${category}-${subcat.subcategory}`;
-            const currentBudget = budgetData[key] || { monthlyBudget: 0, annualBudget: 0 };
-            
-            return (
-              <div key={key} className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                <div>
-                  <h5 className="font-medium text-gray-900 dark:text-gray-100">
-                    {subcat.subcategory}
-                  </h5>
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Monthly Budget
-                  </label>
-                  <Input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={currentBudget.monthlyBudget || ''}
-                    onChange={(e) => handleBudgetChange(subcat.subcategory, 'monthlyBudget', e.target.value)}
-                    placeholder="0.00"
-                  />
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Annual Budget
-                  </label>
-                  <Input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={currentBudget.annualBudget || ''}
-                    onChange={(e) => handleBudgetChange(subcat.subcategory, 'annualBudget', e.target.value)}
-                    placeholder="0.00"
-                  />
-                </div>
-              </div>
-            );
-          })}
-        </div>
-        
-        <div className="p-6 border-t border-gray-200 dark:border-gray-700 flex justify-end space-x-4">
-          <Button
-            onClick={onCancel}
-            variant="outline"
-            disabled={isLoading}
-          >
-            Cancel
-          </Button>
-          <Button
-            onClick={handleSave}
-            disabled={isLoading}
-            className="flex items-center space-x-2"
-          >
-            <Save className="h-4 w-4" />
-            <span>{isLoading ? 'Saving...' : 'Save Changes'}</span>
-          </Button>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-// Debounce utility function
-const debounce = (func, wait) => {
-  let timeout;
-  return function executedFunction(...args) {
-    const later = () => {
-      clearTimeout(timeout);
-      func(...args);
-    };
-    clearTimeout(timeout);
-    timeout = setTimeout(later, wait);
-  };
-};
+import { formatCurrency } from '../../utils/helpers';
 
 const AnnualBudgetPage = () => {
   const { user } = useAuth();
@@ -190,126 +37,49 @@ const AnnualBudgetPage = () => {
   const [syncing, setSyncing] = useState(false);
   const [activeTab, setActiveTab] = useState('overview');
   const [showEditForm, setShowEditForm] = useState(false);
-  const [editingCategory, setEditingCategory] = useState(null);
   const [updating, setUpdating] = useState(false);
-
-  // Cache and request management
-  const cacheRef = useRef({});
-  const lastRequestRef = useRef({});
-  const abortControllerRef = useRef(null);
-
-  // Debounced fetch function
-  const debouncedFetch = useCallback(
-    debounce((year) => {
-      fetchAnnualBudget(year);
-    }, 500),
-    []
-  );
+  const [showWizard, setShowWizard] = useState(false);
+  const [isFirstTimeUser, setIsFirstTimeUser] = useState(false);
+  const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
-    // Cancel previous request if still pending
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort();
-    }
+    fetchAnnualBudget();
+  }, [selectedYear]);
 
-    // Check if we have cached data for this year
-    const cacheKey = `year-${selectedYear}`;
-    if (cacheRef.current[cacheKey] && Date.now() - lastRequestRef.current[cacheKey] < 30000) {
-      // Use cached data if less than 30 seconds old
-      const cachedData = cacheRef.current[cacheKey];
-      setAnnualBudget(cachedData.budget);
-      setPerformance(cachedData.performance);
-      setMonthlyBreakdown(cachedData.monthly);
-      setLoading(false);
-      return;
-    }
-
-    // Use debounced fetch for new requests
-    debouncedFetch(selectedYear);
-  }, [selectedYear, debouncedFetch]);
-
-  // Cleanup function to cancel pending requests
-  useEffect(() => {
-    return () => {
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
-      }
-    };
-  }, []);
-
-  const handleRefresh = () => {
-    // Clear all cache
-    cacheRef.current = {};
-    lastRequestRef.current = {};
-    fetchAnnualBudget(selectedYear);
-  };
-
-  const fetchAnnualBudget = async (year = selectedYear, retryCount = 0) => {
+  const fetchAnnualBudget = async () => {
     try {
       setLoading(true);
       
-      // Create abort controller for this request
-      abortControllerRef.current = new AbortController();
-      const signal = abortControllerRef.current.signal;
+      // Fetch all data in parallel
+      const [budgetResponse, performanceResponse, monthlyResponse] = await Promise.all([
+        annualBudgetAPI.getAnnualBudget(selectedYear).catch(err => ({ data: { data: null } })),
+        annualBudgetAPI.getBudgetPerformance(selectedYear).catch(err => ({ data: { data: null } })),
+        annualBudgetAPI.getMonthlyBreakdown(selectedYear).catch(err => ({ data: { data: null } }))
+      ]);
 
-      // Add signal to API calls to allow cancellation
-      const requestOptions = { signal };
+      const budgetData = budgetResponse.data.data;
       
-      // Fetch data with staggered timing to reduce server load
-      const budgetResponse = await annualBudgetAPI.getAnnualBudget(year);
-      
-      // Small delay before next request
-      await new Promise(resolve => setTimeout(resolve, 100));
-      if (signal.aborted) return;
-      
-      const performanceResponse = await annualBudgetAPI.getBudgetPerformance(year);
-      
-      // Small delay before next request
-      await new Promise(resolve => setTimeout(resolve, 100));
-      if (signal.aborted) return;
-      
-      const monthlyResponse = await annualBudgetAPI.getMonthlyBreakdown(year);
+      // Check if this is a first-time user (no budget for current year)
+      if (!budgetData && selectedYear === currentYear) {
+        setIsFirstTimeUser(true);
+        setShowWizard(true);
+      } else {
+        setIsFirstTimeUser(false);
+        setShowWizard(false);
+      }
 
-      // Cache the successful response
-      const cacheKey = `year-${year}`;
-      cacheRef.current[cacheKey] = {
-        budget: budgetResponse.data.data,
-        performance: performanceResponse.data.data,
-        monthly: monthlyResponse.data.data
-      };
-      lastRequestRef.current[cacheKey] = Date.now();
-
-      setAnnualBudget(budgetResponse.data.data);
+      setAnnualBudget(budgetData);
       setPerformance(performanceResponse.data.data);
       setMonthlyBreakdown(monthlyResponse.data.data);
     } catch (error) {
-      if (error.name === 'AbortError') {
-        console.log('Request was cancelled');
-        return;
-      }
-
       console.error('Error fetching annual budget:', error);
-      
-      // Handle rate limiting with exponential backoff
-      if (error.response?.status === 429 && retryCount < 3) {
-        const retryDelay = Math.pow(2, retryCount) * 1000; // 1s, 2s, 4s
-        toast.error(`Too many requests. Retrying in ${retryDelay / 1000} seconds...`);
-        
-        setTimeout(() => {
-          fetchAnnualBudget(year, retryCount + 1);
-        }, retryDelay);
-        return;
-      }
-      
-      // Handle other errors
-      if (error.response?.status === 429) {
-        toast.error('Server is busy. Please try again later.');
-      } else {
+      // Don't show error toast for first-time users
+      if (!isFirstTimeUser) {
         toast.error('Failed to load annual budget');
       }
     } finally {
       setLoading(false);
-      abortControllerRef.current = null;
     }
   };
 
@@ -318,20 +88,10 @@ const AnnualBudgetPage = () => {
       setSyncing(true);
       await annualBudgetAPI.syncWithTransactions(selectedYear);
       toast.success('Budget synced with transactions');
-      
-      // Clear cache and refresh data
-      const cacheKey = `year-${selectedYear}`;
-      delete cacheRef.current[cacheKey];
-      delete lastRequestRef.current[cacheKey];
-      
-      fetchAnnualBudget(selectedYear);
+      fetchAnnualBudget();
     } catch (error) {
       console.error('Error syncing budget:', error);
-      if (error.response?.status === 429) {
-        toast.error('Server is busy. Please try again later.');
-      } else {
-        toast.error('Failed to sync budget');
-      }
+      toast.error('Failed to sync budget');
     } finally {
       setSyncing(false);
     }
@@ -343,76 +103,58 @@ const AnnualBudgetPage = () => {
       await annualBudgetAPI.createOrUpdateBudget(budgetData);
       toast.success('Annual budget updated successfully!');
       setShowEditForm(false);
-      
-      // Clear cache and refresh data
-      const cacheKey = `year-${selectedYear}`;
-      delete cacheRef.current[cacheKey];
-      delete lastRequestRef.current[cacheKey];
-      
-      fetchAnnualBudget(selectedYear);
+      fetchAnnualBudget();
     } catch (error) {
       console.error('Error updating annual budget:', error);
-      if (error.response?.status === 429) {
-        toast.error('Server is busy. Please try again later.');
-      } else {
-        toast.error('Failed to update annual budget');
-      }
+      toast.error('Failed to update annual budget');
     } finally {
       setUpdating(false);
     }
   };
 
-  const handleCategoryEdit = (categoryName) => {
-    setEditingCategory(categoryName);
+  const handleWizardComplete = async (budgetData) => {
+    setShowWizard(false);
+    setIsFirstTimeUser(false);
+    // Refresh the page data
+    await fetchAnnualBudget();
   };
 
-  const handleCategorySave = async (updatedCategories) => {
+  const handleWizardCancel = () => {
+    setShowWizard(false);
+    // For first-time users, we might want to show an empty state instead
+    if (isFirstTimeUser) {
+      setIsFirstTimeUser(false);
+    }
+  };
+
+  const handleDeleteBudget = async () => {
     try {
-      setUpdating(true);
+      setDeleting(true);
       
-      // Get current budget data and update only the edited category
-      const currentCategories = annualBudget?.categories || [];
-      const otherCategories = currentCategories.filter(cat => 
-        cat.category !== editingCategory
-      );
+      await annualBudgetAPI.deleteAnnualBudget(selectedYear);
       
-      const budgetData = {
-        year: selectedYear,
-        income: annualBudget?.income || { monthly: 0, annual: 0 },
-        categories: [...otherCategories, ...updatedCategories]
-      };
-
-      await annualBudgetAPI.createOrUpdateBudget(budgetData);
-      toast.success(`${editingCategory} budget updated successfully!`);
-      setEditingCategory(null);
+      toast.success(`Annual budget for ${selectedYear} has been deleted successfully`);
       
-      // Clear cache and refresh data
-      const cacheKey = `year-${selectedYear}`;
-      delete cacheRef.current[cacheKey];
-      delete lastRequestRef.current[cacheKey];
+      // Reset state
+      setAnnualBudget(null);
+      setPerformance(null);
+      setMonthlyBreakdown(null);
+      setShowDeleteConfirmation(false);
       
-      fetchAnnualBudget(selectedYear);
+      // Don't auto-show wizard after intentional deletion
+      // User deleted the budget intentionally, respect their choice
+      setIsFirstTimeUser(false);
+      setShowWizard(false);
+      
     } catch (error) {
-      console.error('Error updating category budget:', error);
-      if (error.response?.status === 429) {
-        toast.error('Server is busy. Please try again later.');
-      } else {
-        toast.error(`Failed to update ${editingCategory} budget`);
-      }
+      console.error('Error deleting annual budget:', error);
+      toast.error(
+        error.response?.data?.message || 
+        'Failed to delete annual budget. Please try again.'
+      );
     } finally {
-      setUpdating(false);
+      setDeleting(false);
     }
-  };
-
-  const handleCategoryCancel = () => {
-    setEditingCategory(null);
-  };
-
-  const formatCurrency = (amount) => {
-    return new Intl.NumberFormat('en-KE', {
-      style: 'currency',
-      currency: 'KES'
-    }).format(amount);
   };
 
   const getStatusColor = (variance) => {
@@ -431,6 +173,44 @@ const AnnualBudgetPage = () => {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <LoadingSpinner />
+      </div>
+    );
+  }
+
+  // Show wizard for first-time users or when explicitly requested
+  if (showWizard) {
+    return (
+      <BudgetCreationWizard 
+        onComplete={handleWizardComplete}
+        onCancel={handleWizardCancel}
+      />
+    );
+  }
+
+  // Show empty state for users without a budget who cancelled the wizard
+  if (!annualBudget && !isFirstTimeUser) {
+    return (
+      <div className="max-w-4xl mx-auto p-6">
+        <div className="text-center py-16">
+          <div className="bg-blue-100 dark:bg-blue-900/20 rounded-full w-24 h-24 flex items-center justify-center mx-auto mb-6">
+            <Target className="h-12 w-12 text-blue-600 dark:text-blue-400" />
+          </div>
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-4">
+            Create Your First Annual Budget
+          </h2>
+          <p className="text-gray-600 dark:text-gray-400 mb-8 max-w-md mx-auto">
+            Take control of your finances with a personalized annual budget. 
+            Our guided wizard makes it easy to get started.
+          </p>
+          <Button
+            onClick={() => setShowWizard(true)}
+            size="lg"
+            className="flex items-center space-x-2 mx-auto"
+          >
+            <Plus className="h-5 w-5" />
+            <span>Create Annual Budget</span>
+          </Button>
+        </div>
       </div>
     );
   }
@@ -462,14 +242,26 @@ const AnnualBudgetPage = () => {
           
           {/* Edit Button */}
           {annualBudget && (
-            <Button
-              onClick={() => setShowEditForm(true)}
-              variant="outline"
-              className="flex items-center space-x-2"
-            >
-              <Edit3 className="h-4 w-4" />
-              <span>Edit Budget</span>
-            </Button>
+            <>
+              <Button
+                onClick={() => setShowEditForm(true)}
+                variant="outline"
+                className="flex items-center space-x-2"
+              >
+                <Edit3 className="h-4 w-4" />
+                <span>Edit Budget</span>
+              </Button>
+              
+              {/* Delete Button */}
+              <Button
+                onClick={() => setShowDeleteConfirmation(true)}
+                variant="outline"
+                className="flex items-center space-x-2 text-red-600 border-red-300 hover:bg-red-50 hover:border-red-400 dark:text-red-400 dark:border-red-600 dark:hover:bg-red-900/20"
+              >
+                <Trash2 className="h-4 w-4" />
+                <span>Delete</span>
+              </Button>
+            </>
           )}
           
           {/* Sync Button */}
@@ -481,17 +273,6 @@ const AnnualBudgetPage = () => {
           >
             <RefreshCw className={`h-4 w-4 ${syncing ? 'animate-spin' : ''}`} />
             <span>{syncing ? 'Syncing...' : 'Sync'}</span>
-          </Button>
-
-          {/* Manual Refresh Button */}
-          <Button
-            onClick={handleRefresh}
-            disabled={loading}
-            variant="outline"
-            className="flex items-center space-x-2"
-          >
-            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-            <span>Refresh</span>
           </Button>
         </div>
       </div>
@@ -672,7 +453,7 @@ const AnnualBudgetPage = () => {
                       </p>
                     </div>
                     <Button
-                      onClick={() => handleCategoryEdit(categoryGroup.category)}
+                      onClick={() => setShowEditForm(true)}
                       variant="ghost"
                       size="sm"
                       className="text-blue-600 hover:text-blue-700 dark:text-blue-400"
@@ -829,16 +610,22 @@ const AnnualBudgetPage = () => {
         </div>
       )}
 
-      {/* Category Edit Modal */}
-      {editingCategory && performance && (
-        <CategoryEditForm
-          category={editingCategory}
-          subcategories={performance.categoryGroups[editingCategory]?.subcategories || []}
-          onSave={handleCategorySave}
-          onCancel={handleCategoryCancel}
-          isLoading={updating}
-        />
-      )}
+      {/* Delete Confirmation Dialog */}
+      <DeleteConfirmation
+        isOpen={showDeleteConfirmation}
+        onClose={() => setShowDeleteConfirmation(false)}
+        onConfirm={handleDeleteBudget}
+        title="Delete Annual Budget"
+        itemName={`${selectedYear}`}
+        itemType="annual budget"
+        year={selectedYear}
+        isLoading={deleting}
+        customWarnings={[
+          `All ${selectedYear} financial planning data will be removed`,
+          "Budget performance tracking and analytics will be lost",
+          "This may affect your multi-year financial planning reports"
+        ]}
+      />
     </div>
   );
 };

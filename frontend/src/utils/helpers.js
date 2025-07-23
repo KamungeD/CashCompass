@@ -19,11 +19,15 @@ export const formatCurrency = (amount, currency = 'KES', hideSymbolForEmpty = fa
     return '';
   }
   
+  // Handle null, undefined, or empty values
+  if (!amount && amount !== 0) return `${currency} 0`;
+  
   return new Intl.NumberFormat('en-KE', {
     style: 'currency',
     currency: currency,
-    minimumFractionDigits: 2,
-  }).format(amount);
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0
+  }).format(Math.round(amount));
 };
 
 /**

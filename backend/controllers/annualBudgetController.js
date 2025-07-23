@@ -81,16 +81,15 @@ exports.getAnnualBudget = async (req, res) => {
       year: parseInt(year)
     });
 
-    // Create default budget if none exists
+    // Return null if no budget exists - don't auto-create
     if (!annualBudget) {
-      annualBudget = await AnnualBudget.createFromTemplate(
-        userId,
-        parseInt(year),
-        DEFAULT_BUDGET_TEMPLATE
-      );
+      return res.json({
+        success: true,
+        data: null
+      });
     }
 
-    // Sync with current transactions
+    // Sync with current transactions only if budget exists
     await annualBudget.syncWithTransactions();
 
     res.json({
@@ -365,6 +364,185 @@ exports.getBudgetTemplate = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Failed to fetch budget template',
+      error: error.message
+    });
+  }
+};
+
+// Generate budget recommendations based on user input
+exports.generateBudgetRecommendations = async (req, res) => {
+  try {
+    const { income, priority, profile } = req.body;
+
+    if (!income || income <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Valid income is required'
+      });
+    }
+
+    // Base allocations using 50/30/20 rule with modifications
+    let essentialPercentage = 0.5;
+    let lifestylePercentage = 0.3;
+    let savingsPercentage = 0.2;
+
+    // Adjust based on priority
+    switch (priority) {
+      case 'increase-savings':
+        savingsPercentage = 0.3;
+        lifestylePercentage = 0.2;
+        break;
+      case 'live-within-means':
+        essentialPercentage = 0.45;
+        lifestylePercentage = 0.35;
+        savingsPercentage = 0.2;
+        break;
+      case 'healthy-lifestyle':
+        lifestylePercentage = 0.35;
+        essentialPercentage = 0.45;
+        savingsPercentage = 0.2;
+        break;
+      case 'responsible-spending':
+        essentialPercentage = 0.45;
+        lifestylePercentage = 0.25;
+        savingsPercentage = 0.3;
+        break;
+    }
+
+    // Adjust based on life stage
+    if (profile?.lifeStage === 'student') {
+      savingsPercentage *= 0.5;
+      lifestylePercentage += 0.1;
+    } else if (profile?.lifeStage === 'approaching-retirement') {
+      savingsPercentage = 0.4;
+      lifestylePercentage = 0.2;
+      essentialPercentage = 0.4;
+    }
+
+    // Adjust based on living situation
+    if (profile?.livingSituation === 'with-parents') {
+      essentialPercentage *= 0.3; // Much lower housing costs
+      savingsPercentage += 0.2;
+    } else if (profile?.livingSituation === 'renting-shared') {
+      essentialPercentage *= 0.8; // Shared housing costs
+      savingsPercentage += 0.1;
+    }
+
+    // Calculate amounts
+    const essentialAmount = income * essentialPercentage;
+    const lifestyleAmount = income * lifestylePercentage;
+    const savingsAmount = income * savingsPercentage;
+
+    // Generate category recommendations
+    const categories = [
+      // Essential Categories
+      {
+        category: 'Housing',
+        subcategory: 'Rent/Mortgage',
+        monthlyBudget: Math.round((essentialAmount * 0.6) / 12),
+        annualBudget: Math.round(essentialAmount * 0.6),
+        isEssential: true
+      },
+      {
+        category: 'Housing',
+        subcategory: 'Utilities',
+        monthlyBudget: Math.round((essentialAmount * 0.15) / 12),
+        annualBudget: Math.round(essentialAmount * 0.15),
+        isEssential: true
+      },
+      {
+        category: 'Transportation',
+        subcategory: 'Transport Costs',
+        monthlyBudget: Math.round((essentialAmount * 0.15) / 12),
+        annualBudget: Math.round(essentialAmount * 0.15),
+        isEssential: true
+      },
+      {
+        category: 'Food',
+        subcategory: 'Groceries',
+        monthlyBudget: Math.round((essentialAmount * 0.1) / 12),
+        annualBudget: Math.round(essentialAmount * 0.1),
+        isEssential: true
+      },
+
+      // Lifestyle Categories
+      {
+        category: 'Entertainment',
+        subcategory: 'Entertainment & Hobbies',
+        monthlyBudget: Math.round((lifestyleAmount * 0.4) / 12),
+        annualBudget: Math.round(lifestyleAmount * 0.4),
+        isEssential: false
+      },
+      {
+        category: 'Food',
+        subcategory: 'Dining Out',
+        monthlyBudget: Math.round((lifestyleAmount * 0.3) / 12),
+        annualBudget: Math.round(lifestyleAmount * 0.3),
+        isEssential: false
+      },
+      {
+        category: 'Personal Care',
+        subcategory: 'Personal Care',
+        monthlyBudget: Math.round((lifestyleAmount * 0.2) / 12),
+        annualBudget: Math.round(lifestyleAmount * 0.2),
+        isEssential: false
+      },
+      {
+        category: 'Miscellaneous',
+        subcategory: 'Fun Money',
+        monthlyBudget: Math.round((lifestyleAmount * 0.1) / 12),
+        annualBudget: Math.round(lifestyleAmount * 0.1),
+        isEssential: false
+      },
+
+      // Savings Categories
+      {
+        category: 'Emergency Fund',
+        subcategory: 'Emergency Savings',
+        monthlyBudget: Math.round((savingsAmount * 0.5) / 12),
+        annualBudget: Math.round(savingsAmount * 0.5),
+        isEssential: true
+      },
+      {
+        category: 'Short-term Goals',
+        subcategory: 'Short-term Savings',
+        monthlyBudget: Math.round((savingsAmount * 0.3) / 12),
+        annualBudget: Math.round(savingsAmount * 0.3),
+        isEssential: false
+      },
+      {
+        category: 'Long-term Goals',
+        subcategory: 'Long-term Investments',
+        monthlyBudget: Math.round((savingsAmount * 0.2) / 12),
+        annualBudget: Math.round(savingsAmount * 0.2),
+        isEssential: false
+      }
+    ];
+
+    const totalAllocated = categories.reduce((sum, cat) => sum + cat.annualBudget, 0);
+
+    res.json({
+      success: true,
+      data: {
+        categories,
+        totalAllocated,
+        breakdown: {
+          essential: Math.round(essentialAmount),
+          lifestyle: Math.round(lifestyleAmount),
+          savings: Math.round(savingsAmount)
+        },
+        percentages: {
+          essential: Math.round(essentialPercentage * 100),
+          lifestyle: Math.round(lifestylePercentage * 100),
+          savings: Math.round(savingsPercentage * 100)
+        }
+      }
+    });
+  } catch (error) {
+    console.error('Error generating budget recommendations:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to generate budget recommendations',
       error: error.message
     });
   }

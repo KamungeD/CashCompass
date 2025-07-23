@@ -8,8 +8,7 @@ const mongoSanitize = require('express-mongo-sanitize');
 const xss = require('xss-clean');
 const hpp = require('hpp');
 const rateLimit = require('express-rate-limit');
-// Restart trigger v2
-// Restart
+// Restart trigger v5
 const cookieParser = require('cookie-parser');
 const colors = require('colors');
 
@@ -209,7 +208,7 @@ app.use(notFound);
 app.use(errorHandler);
 
 // Start server
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 5001;
 
 const server = app.listen(PORT, () => {
   console.log(

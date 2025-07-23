@@ -7,6 +7,7 @@ const {
   getMonthlyBreakdown,
   syncBudgetWithTransactions,
   getBudgetTemplate,
+  generateBudgetRecommendations,
   deleteAnnualBudget
 } = require('../controllers/annualBudgetController');
 const { authenticate } = require('../middleware/auth');
@@ -16,6 +17,9 @@ router.use(authenticate);
 
 // Get budget template
 router.get('/template', getBudgetTemplate);
+
+// Generate budget recommendations
+router.post('/recommendations', generateBudgetRecommendations);
 
 // Get annual budget for specific year
 router.get('/:year', getAnnualBudget);

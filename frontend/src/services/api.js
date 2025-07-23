@@ -51,7 +51,7 @@ const retryRequest = async (originalRequest, retryCount = 0) => {
 
 // Create axios instance with base configuration
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1',
+  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:5005/api/v1',
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json',
@@ -60,7 +60,7 @@ const api = axios.create({
 
 // Create a separate axios instance for retries (without interceptors)
 const retryApi = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1',
+  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:5005/api/v1',
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json',
@@ -296,6 +296,9 @@ export const annualBudgetAPI = {
   
   // Get budget template
   getBudgetTemplate: () => api.get('/annual-budgets/template'),
+  
+  // Generate budget recommendations
+  generateRecommendations: (data) => api.post('/annual-budgets/recommendations', data),
   
   // Delete annual budget
   deleteAnnualBudget: (year) => api.delete(`/annual-budgets/${year}`)
