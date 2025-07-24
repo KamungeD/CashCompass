@@ -90,8 +90,18 @@ const DeleteConfirmation = ({
   const canProceedStep3 = typeConfirmation === requiredText && countdown === 0;
 
   const handleFinalConfirm = () => {
+    console.log('🗑️ DeleteConfirmation: Final confirm clicked');
+    console.log('🗑️ DeleteConfirmation: canProceedStep3:', canProceedStep3);
+    console.log('🗑️ DeleteConfirmation: isLoading:', isLoading);
+    console.log('🗑️ DeleteConfirmation: typeConfirmation:', typeConfirmation);
+    console.log('🗑️ DeleteConfirmation: requiredText:', requiredText);
+    console.log('🗑️ DeleteConfirmation: countdown:', countdown);
+    
     if (canProceedStep3 && !isLoading) {
+      console.log('🗑️ DeleteConfirmation: Calling onConfirm...');
       onConfirm();
+    } else {
+      console.log('🗑️ DeleteConfirmation: Cannot proceed - conditions not met');
     }
   };
 

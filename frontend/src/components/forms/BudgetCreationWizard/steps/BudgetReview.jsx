@@ -4,8 +4,6 @@ import {
   Plus, 
   Trash2, 
   Edit3, 
-  ToggleLeft, 
-  ToggleRight,
   ChevronRight, 
   ChevronLeft,
   AlertTriangle,
@@ -46,17 +44,31 @@ const BudgetReview = ({ wizardData, updateWizardData, goToNextStep, goToPrevious
     // If budget is empty, initialize with default categories
     if (!budget.categories || budget.categories.length === 0) {
       initializeDefaultBudget();
+    } else {
+      // Ensure all existing categories have unique IDs
+      const categoriesWithIds = budget.categories.map((category, index) => ({
+        ...category,
+        id: category.id || `existing-${Date.now()}-${index}`
+      }));
+      
+      if (categoriesWithIds.some((cat, idx) => cat.id !== budget.categories[idx]?.id)) {
+        setBudget(prev => ({
+          ...prev,
+          categories: categoriesWithIds
+        }));
+      }
     }
   }, []);
 
   const initializeDefaultBudget = () => {
     const categories = [];
+    let idCounter = 0;
     
     Object.entries(defaultCategories).forEach(([groupName, groupCategories]) => {
       groupCategories.forEach(cat => {
         cat.subcategories.forEach(subcat => {
           categories.push({
-            id: Date.now() + Math.random(),
+            id: `${Date.now()}-${idCounter++}`,
             category: cat.name,
             subcategory: subcat,
             monthlyBudget: 0,
@@ -76,7 +88,18 @@ const BudgetReview = ({ wizardData, updateWizardData, goToNextStep, goToPrevious
 
   const calculateTotalAllocated = () => {
     return budget.categories.reduce((total, cat) => {
+      // Always calculate based on annual budget for consistency
       return total + (cat.annualBudget || 0);
+    }, 0);
+  };
+
+  const calculateTotalAllocatedForView = () => {
+    return budget.categories.reduce((total, cat) => {
+      if (viewMode === 'monthly') {
+        return total + (cat.monthlyBudget || 0);
+      } else {
+        return total + (cat.annualBudget || 0);
+      }
     }, 0);
   };
 
@@ -103,7 +126,7 @@ const BudgetReview = ({ wizardData, updateWizardData, goToNextStep, goToPrevious
 
   const addCustomCategory = () => {
     const newCategory = {
-      id: Date.now(),
+      id: `custom-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       category: 'Custom',
       subcategory: 'New Category',
       monthlyBudget: 0,
@@ -137,15 +160,6 @@ const BudgetReview = ({ wizardData, updateWizardData, goToNextStep, goToPrevious
     }));
   };
 
-  const toggleExpenseType = (categoryId) => {
-    setBudget(prev => ({
-      ...prev,
-      categories: prev.categories.map(cat => 
-        cat.id === categoryId ? { ...cat, isMonthly: !cat.isMonthly } : cat
-      )
-    }));
-  };
-
   const groupedCategories = budget.categories.reduce((groups, category) => {
     const group = category.isEssential ? 'Essential' : 
                   category.category === 'Emergency Fund' || category.category.includes('Goals') ? 'Savings & Goals' : 
@@ -157,8 +171,12 @@ const BudgetReview = ({ wizardData, updateWizardData, goToNextStep, goToPrevious
   }, {});
 
   const totalAllocated = calculateTotalAllocated();
-  const remainingIncome = wizardData.budget.totalIncome - totalAllocated;
-  const allocationPercentage = (totalAllocated / wizardData.budget.totalIncome) * 100;
+  const totalAllocatedForView = calculateTotalAllocatedForView();
+  
+  // Calculate remaining income and percentage based on view mode
+  const incomeForView = viewMode === 'monthly' ? wizardData.budget.totalIncome / 12 : wizardData.budget.totalIncome;
+  const remainingIncome = incomeForView - totalAllocatedForView;
+  const allocationPercentage = (totalAllocatedForView / incomeForView) * 100;
 
   const getStatusColor = () => {
     if (allocationPercentage <= 100) return 'text-green-600 dark:text-green-400';
@@ -191,14 +209,14 @@ const BudgetReview = ({ wizardData, updateWizardData, goToNextStep, goToPrevious
           <div className="text-center">
             <p className="text-sm text-gray-600 dark:text-gray-400">Total Income</p>
             <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-              {formatCurrency(wizardData.budget.totalIncome)}
+              {formatCurrency(incomeForView)}
             </p>
           </div>
           
           <div className="text-center">
             <p className="text-sm text-gray-600 dark:text-gray-400">Total Allocated</p>
             <p className={`text-2xl font-bold ${getStatusColor()}`}>
-              {formatCurrency(totalAllocated)}
+              {formatCurrency(totalAllocatedForView)}
             </p>
           </div>
           
@@ -253,9 +271,9 @@ const BudgetReview = ({ wizardData, updateWizardData, goToNextStep, goToPrevious
             </h3>
             
             <div className="space-y-4">
-              {categories.map(category => (
-                <div key={category.id} className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
-                  <div className="grid grid-cols-1 md:grid-cols-5 gap-4 items-center">
+              {categories.map((category, index) => (
+                <div key={category.id || `category-${index}-${category.category}-${category.subcategory}`} className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-center">
                     {/* Category/Subcategory */}
                     <div className="md:col-span-2">
                       {editingCategory === category.id ? (
@@ -281,23 +299,6 @@ const BudgetReview = ({ wizardData, updateWizardData, goToNextStep, goToPrevious
                           </p>
                         </div>
                       )}
-                    </div>
-
-                    {/* Monthly/Annual Toggle */}
-                    <div className="flex items-center justify-center">
-                      <button
-                        onClick={() => toggleExpenseType(category.id)}
-                        className="flex items-center space-x-2 text-sm"
-                      >
-                        {category.isMonthly ? (
-                          <ToggleLeft className="h-6 w-6 text-blue-600 dark:text-blue-400" />
-                        ) : (
-                          <ToggleRight className="h-6 w-6 text-green-600 dark:text-green-400" />
-                        )}
-                        <span className="text-gray-600 dark:text-gray-400">
-                          {category.isMonthly ? 'Monthly' : 'Annual'}
-                        </span>
-                      </button>
                     </div>
 
                     {/* Amount Input */}

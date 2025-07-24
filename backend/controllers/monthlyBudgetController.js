@@ -282,10 +282,40 @@ exports.createOrUpdateMonthlyBudget = async (req, res) => {
     const userId = req.user.id;
     const { year, month, income, categories, creationMethod, userProfile, priority } = req.body;
 
+    console.log('📅 Monthly budget creation request:', {
+      userId,
+      year,
+      month,
+      income: income ? { monthly: income.monthly, annual: income.annual } : null,
+      categoriesCount: categories ? categories.length : 0,
+      creationMethod,
+      priority
+    });
+
+    // Validation
     if (!year || !month) {
+      console.error('❌ Missing required fields: year or month');
       return res.status(400).json({
         success: false,
-        message: 'Year and month are required'
+        message: 'Year and month are required',
+        details: {
+          year: year || 'missing',
+          month: month || 'missing'
+        }
+      });
+    }
+
+    if (year < 2020 || year > 2050) {
+      return res.status(400).json({
+        success: false,
+        message: 'Year must be between 2020 and 2050'
+      });
+    }
+
+    if (month < 1 || month > 12) {
+      return res.status(400).json({
+        success: false,
+        message: 'Month must be between 1 and 12'
       });
     }
 
@@ -301,6 +331,7 @@ exports.createOrUpdateMonthlyBudget = async (req, res) => {
 
     if (monthlyBudget) {
       // Update existing budget
+      console.log('🔄 Updating existing monthly budget');
       monthlyBudget.income = {
         monthly: monthlyIncomeAmount,
         annual: annualIncomeAmount,
@@ -312,6 +343,7 @@ exports.createOrUpdateMonthlyBudget = async (req, res) => {
       monthlyBudget.creationMethod = creationMethod || monthlyBudget.creationMethod;
     } else {
       // Create new budget
+      console.log('✨ Creating new monthly budget');
       monthlyBudget = new MonthlyBudget({
         user: userId,
         year,
@@ -329,10 +361,12 @@ exports.createOrUpdateMonthlyBudget = async (req, res) => {
     }
 
     await monthlyBudget.save();
+    console.log('✅ Monthly budget saved successfully');
 
     // Update or create yearly plan
     let yearlyPlan = await YearlyPlan.findOne({ user: userId, year });
     if (!yearlyPlan) {
+      console.log('📊 Creating new yearly plan');
       yearlyPlan = new YearlyPlan({
         user: userId,
         year,
@@ -348,6 +382,7 @@ exports.createOrUpdateMonthlyBudget = async (req, res) => {
     }
 
     await yearlyPlan.updateMonthlySummary(month, monthlyBudget);
+    console.log('📈 Yearly plan updated');
 
     res.status(201).json({
       success: true,
@@ -355,11 +390,27 @@ exports.createOrUpdateMonthlyBudget = async (req, res) => {
       data: monthlyBudget
     });
   } catch (error) {
-    console.error('Error creating/updating monthly budget:', error);
+    console.error('❌ Error creating/updating monthly budget:', error);
+    
+    // Check for validation errors
+    if (error.name === 'ValidationError') {
+      const validationErrors = Object.values(error.errors).map(err => ({
+        field: err.path,
+        message: err.message,
+        value: err.value
+      }));
+      
+      return res.status(400).json({
+        success: false,
+        message: 'Validation failed',
+        errors: validationErrors
+      });
+    }
+
     res.status(500).json({
       success: false,
       message: 'Failed to save monthly budget',
-      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      error: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
     });
   }
 };

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { X } from 'lucide-react';
 import { useAuth } from '../../../context/AuthContext';
 import { monthlyBudgetAPI } from '../../../services/api';
 import toast from 'react-hot-toast';
@@ -19,6 +20,7 @@ const BudgetCreationWizard = ({ onComplete, onCancel }) => {
   const { user } = useAuth();
   const [currentStep, setCurrentStep] = useState(1);
   const [loading, setLoading] = useState(false);
+  const [showAbandonConfirm, setShowAbandonConfirm] = useState(false);
   const totalSteps = 7;
 
   // Wizard state
@@ -104,6 +106,27 @@ const BudgetCreationWizard = ({ onComplete, onCancel }) => {
     }
   };
 
+  const handleAbandonClick = () => {
+    setShowAbandonConfirm(true);
+  };
+
+  const handleAbandonConfirm = () => {
+    // Clear any saved progress
+    try {
+      localStorage.removeItem('budgetWizardProgress');
+    } catch (error) {
+      console.error('Failed to clear wizard progress:', error);
+    }
+    
+    setShowAbandonConfirm(false);
+    toast.success('Budget creation abandoned');
+    onCancel();
+  };
+
+  const handleAbandonCancel = () => {
+    setShowAbandonConfirm(false);
+  };
+
   const generateRecommendedBudget = async () => {
     try {
       setLoading(true);
@@ -147,19 +170,26 @@ const BudgetCreationWizard = ({ onComplete, onCancel }) => {
     try {
       setLoading(true);
 
+      const currentDate = new Date();
+      const currentYear = currentDate.getFullYear();
+      const currentMonth = currentDate.getMonth() + 1; // getMonth() returns 0-11
+
       // Prepare final data for API
       const budgetPayload = {
-        month: new Date().toISOString().slice(0, 7), // YYYY-MM format
+        year: currentYear,
+        month: currentMonth,
         income: {
           monthly: wizardData.budget.totalIncome / 12,
           annual: wizardData.budget.totalIncome,
-          sources: wizardData.incomes
+          sources: wizardData.incomes || []
         },
-        categories: finalBudgetData.categories,
+        categories: finalBudgetData.categories || [],
         creationMethod: 'guided',
-        userProfile: wizardData.profile,
-        priority: wizardData.priority
+        userProfile: wizardData.profile || {},
+        priority: wizardData.priority || null
       };
+
+      console.log('📊 Creating monthly budget with payload:', budgetPayload);
 
       // Save the budget
       const response = await monthlyBudgetAPI.createOrUpdateBudget(budgetPayload);
@@ -174,6 +204,7 @@ const BudgetCreationWizard = ({ onComplete, onCancel }) => {
       
     } catch (error) {
       console.error('Error creating monthly budget:', error);
+      console.error('Error details:', error.response?.data);
       toast.error('Failed to create monthly budget. Please try again.');
       throw error;
     } finally {
@@ -222,7 +253,16 @@ const BudgetCreationWizard = ({ onComplete, onCancel }) => {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      <div className="max-w-4xl mx-auto pt-8 pb-16 px-4">
+      <div className="max-w-4xl mx-auto pt-8 pb-16 px-4 relative">
+        {/* Close/Abandon Button - Top Right */}
+        <button
+          onClick={handleAbandonClick}
+          className="absolute top-4 right-4 z-10 p-2 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-colors"
+          title="Abandon budget creation"
+        >
+          <X className="h-6 w-6" />
+        </button>
+
         {/* Progress Indicator */}
         <WizardProgress 
           currentStep={currentStep} 
@@ -238,13 +278,53 @@ const BudgetCreationWizard = ({ onComplete, onCancel }) => {
         {/* Cancel Button (always visible) */}
         <div className="fixed bottom-4 left-4">
           <button
-            onClick={onCancel}
+            onClick={handleAbandonClick}
             className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 text-sm underline"
           >
             Cancel & Exit
           </button>
         </div>
       </div>
+
+      {/* Abandon Confirmation Modal */}
+      {showAbandonConfirm && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                Abandon Budget Creation?
+              </h3>
+              <button
+                onClick={handleAbandonCancel}
+                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            
+            <div className="mb-6">
+              <p className="text-gray-600 dark:text-gray-400 mb-3">
+                Are you sure you want to abandon creating this budget? All your progress will be lost.
+              </p>
+            </div>
+            
+            <div className="flex space-x-3">
+              <button
+                onClick={handleAbandonCancel}
+                className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+              >
+                Continue Creating
+              </button>
+              <button
+                onClick={handleAbandonConfirm}
+                className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+              >
+                Yes, Abandon
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

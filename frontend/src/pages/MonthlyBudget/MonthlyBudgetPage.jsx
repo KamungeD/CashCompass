@@ -111,13 +111,18 @@ const MonthlyBudgetPage = () => {
 
   const handleDeleteBudget = async () => {
     try {
+      console.log('🗑️ Starting monthly budget delete process');
+      console.log('🗑️ Year:', selectedYear, 'Month:', selectedMonth);
+      
       await monthlyBudgetAPI.deleteMonthlyBudget(selectedYear, selectedMonth);
+      
+      console.log('✅ Monthly budget deleted successfully');
       setMonthlyBudget(null);
       setPerformanceData(null);
       setShowDeleteConfirm(false);
       toast.success('Monthly budget deleted successfully');
     } catch (error) {
-      console.error('Error deleting monthly budget:', error);
+      console.error('❌ Error deleting monthly budget:', error);
       toast.error('Failed to delete monthly budget');
     }
   };
@@ -283,7 +288,10 @@ const MonthlyBudgetPage = () => {
               </button>
 
               <button
-                onClick={() => setShowDeleteConfirm(true)}
+                onClick={() => {
+                  console.log('🗑️ Monthly budget delete button clicked');
+                  setShowDeleteConfirm(true);
+                }}
                 className="flex items-center space-x-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
               >
                 <Trash2 className="h-4 w-4" />
@@ -415,7 +423,7 @@ const MonthlyBudgetPage = () => {
                 budget={monthlyBudget}
                 year={selectedYear}
                 month={selectedMonth}
-                onSave={(savedBudget) => {
+                onSubmit={(savedBudget) => {
                   setMonthlyBudget(savedBudget);
                   setShowCreateForm(false);
                   fetchMonthlyBudget();
@@ -430,10 +438,19 @@ const MonthlyBudgetPage = () => {
         {/* Delete Confirmation */}
         {showDeleteConfirm && (
           <DeleteConfirmation
-            title="Delete Monthly Budget"
-            message={`Are you sure you want to delete the budget for ${monthNames[selectedMonth - 1]} ${selectedYear}? This action cannot be undone.`}
+            isOpen={true}
+            onClose={() => setShowDeleteConfirm(false)}
             onConfirm={handleDeleteBudget}
-            onCancel={() => setShowDeleteConfirm(false)}
+            title="Delete Monthly Budget"
+            itemName={`${monthNames[selectedMonth - 1]} ${selectedYear}`}
+            itemType="monthly budget"
+            year={selectedYear}
+            isLoading={false}
+            customWarnings={[
+              `All ${monthNames[selectedMonth - 1]} ${selectedYear} budget data will be removed`,
+              "Monthly expense tracking and progress will be lost",
+              "This may affect your budget history and analytics"
+            ]}
           />
         )}
       </div>

@@ -129,10 +129,13 @@ const AnnualBudgetPage = () => {
 
   const handleDeleteBudget = async () => {
     try {
+      console.log('🗑️ Starting delete process for year:', selectedYear);
       setDeleting(true);
       
+      console.log('🗑️ Calling API to delete annual budget...');
       await annualBudgetAPI.deleteAnnualBudget(selectedYear);
       
+      console.log('✅ Annual budget deleted successfully');
       toast.success(`Annual budget for ${selectedYear} has been deleted successfully`);
       
       // Reset state
@@ -147,7 +150,7 @@ const AnnualBudgetPage = () => {
       setShowWizard(false);
       
     } catch (error) {
-      console.error('Error deleting annual budget:', error);
+      console.error('❌ Error deleting annual budget:', error);
       toast.error(
         error.response?.data?.message || 
         'Failed to delete annual budget. Please try again.'
@@ -254,7 +257,10 @@ const AnnualBudgetPage = () => {
               
               {/* Delete Button */}
               <Button
-                onClick={() => setShowDeleteConfirmation(true)}
+                onClick={() => {
+                  console.log('🗑️ Delete button clicked, showing confirmation');
+                  setShowDeleteConfirmation(true);
+                }}
                 variant="outline"
                 className="flex items-center space-x-2 text-red-600 border-red-300 hover:bg-red-50 hover:border-red-400 dark:text-red-400 dark:border-red-600 dark:hover:bg-red-900/20"
               >
@@ -611,21 +617,23 @@ const AnnualBudgetPage = () => {
       )}
 
       {/* Delete Confirmation Dialog */}
-      <DeleteConfirmation
-        isOpen={showDeleteConfirmation}
-        onClose={() => setShowDeleteConfirmation(false)}
-        onConfirm={handleDeleteBudget}
-        title="Delete Annual Budget"
-        itemName={`${selectedYear}`}
-        itemType="annual budget"
-        year={selectedYear}
-        isLoading={deleting}
-        customWarnings={[
-          `All ${selectedYear} financial planning data will be removed`,
-          "Budget performance tracking and analytics will be lost",
-          "This may affect your multi-year financial planning reports"
-        ]}
-      />
+      {showDeleteConfirmation && (
+        <DeleteConfirmation
+          isOpen={true}
+          onClose={() => setShowDeleteConfirmation(false)}
+          onConfirm={handleDeleteBudget}
+          title="Delete Annual Budget"
+          itemName={`${selectedYear}`}
+          itemType="annual budget"
+          year={selectedYear}
+          isLoading={deleting}
+          customWarnings={[
+            `All ${selectedYear} financial planning data will be removed`,
+            "Budget performance tracking and analytics will be lost",
+            "This may affect your multi-year financial planning reports"
+          ]}
+        />
+      )}
     </div>
   );
 };
