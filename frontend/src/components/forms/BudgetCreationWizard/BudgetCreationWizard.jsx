@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../../context/AuthContext';
-import { annualBudgetAPI } from '../../../services/api';
+import { monthlyBudgetAPI } from '../../../services/api';
 import toast from 'react-hot-toast';
 
 // Step Components
@@ -123,7 +123,7 @@ const BudgetCreationWizard = ({ onComplete, onCancel }) => {
         selectedCategories: wizardData.selectedCategories
       };
 
-      const response = await annualBudgetAPI.generateRecommendations(recommendationRequest);
+      const response = await monthlyBudgetAPI.generateRecommendations(recommendationRequest);
       const recommendedBudget = response.data.data;
 
       // Update wizard data with generated budget
@@ -149,10 +149,10 @@ const BudgetCreationWizard = ({ onComplete, onCancel }) => {
 
       // Prepare final data for API
       const budgetPayload = {
-        year: new Date().getFullYear(),
+        month: new Date().toISOString().slice(0, 7), // YYYY-MM format
         income: {
-          annual: wizardData.budget.totalIncome,
           monthly: wizardData.budget.totalIncome / 12,
+          annual: wizardData.budget.totalIncome,
           sources: wizardData.incomes
         },
         categories: finalBudgetData.categories,
@@ -162,19 +162,19 @@ const BudgetCreationWizard = ({ onComplete, onCancel }) => {
       };
 
       // Save the budget
-      const response = await annualBudgetAPI.createOrUpdateBudget(budgetPayload);
+      const response = await monthlyBudgetAPI.createOrUpdateBudget(budgetPayload);
       
       // Clear progress data
       localStorage.removeItem('budgetWizardProgress');
       
-      toast.success('🎉 Your annual budget has been created successfully!');
+      toast.success('🎉 Your monthly budget has been created successfully!');
       
       // Call completion callback
       onComplete(response.data.data);
       
     } catch (error) {
-      console.error('Error creating annual budget:', error);
-      toast.error('Failed to create annual budget. Please try again.');
+      console.error('Error creating monthly budget:', error);
+      toast.error('Failed to create monthly budget. Please try again.');
       throw error;
     } finally {
       setLoading(false);

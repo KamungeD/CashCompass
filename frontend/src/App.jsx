@@ -13,7 +13,8 @@ const DashboardPage = lazy(() => import('./pages/Dashboard/DashboardPage'));
 const TransactionsPage = lazy(() => import('./pages/Transactions/TransactionsPage'));
 const BudgetsPage = lazy(() => import('./pages/Budgets/BudgetsPage'));
 const AnalyticsPage = lazy(() => import('./pages/Analytics/AnalyticsPage'));
-const AnnualBudgetPage = lazy(() => import('./pages/AnnualBudget/AnnualBudgetPage'));
+const MonthlyBudgetPage = lazy(() => import('./pages/MonthlyBudget/MonthlyBudgetPage'));
+const AnnualBudgetPage = lazy(() => import('./pages/AnnualBudget/AnnualBudgetPage')); // Keep for legacy
 
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
@@ -100,6 +101,15 @@ const AppRoutes = () => {
           />
           
           <Route 
+            path="/monthly-budget" 
+            element={
+              <ProtectedRoute>
+                <MonthlyBudgetPage />
+              </ProtectedRoute>
+            } 
+          />
+          
+          <Route 
             path="/annual-budget" 
             element={
               <ProtectedRoute>
@@ -107,6 +117,9 @@ const AppRoutes = () => {
               </ProtectedRoute>
             } 
           />
+          
+          {/* Redirect old annual budget route to new monthly budget */}
+          <Route path="/budget" element={<Navigate to="/monthly-budget" replace />} />
           
           {/* Default redirect */}
           <Route path="/" element={<Navigate to="/dashboard" replace />} />

@@ -254,11 +254,11 @@ const BudgetsPage = () => {
             <Button
               variant="secondary"
               size="md"
-              onClick={() => navigate('/annual-budget')}
+              onClick={() => navigate('/monthly-budget')}
               className="flex items-center space-x-2 bg-green-600 hover:bg-green-700 text-white"
             >
               <Plus className="h-4 w-4" />
-              <span>Annual Budget</span>
+              <span>Monthly Budget</span>
             </Button>
           </div>
         </div>

@@ -157,7 +157,7 @@ const PersonalProfile = ({ wizardData, updateWizardData, goToNextStep, goToPrevi
                 min="0"
                 max="20"
                 placeholder="0"
-                value={profile.dependents}
+                value={profile.dependents || 0}
                 onChange={(e) => updateProfile('dependents', parseInt(e.target.value) || 0)}
               />
               <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
@@ -175,7 +175,7 @@ const PersonalProfile = ({ wizardData, updateWizardData, goToNextStep, goToPrevi
             <div className="max-w-md">
               <Input
                 placeholder="e.g., Nairobi, Mombasa, Kisumu"
-                value={profile.location}
+                value={profile.location || ''}
                 onChange={(e) => updateProfile('location', e.target.value)}
               />
               <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">

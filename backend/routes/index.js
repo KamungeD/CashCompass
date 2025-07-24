@@ -6,7 +6,9 @@ const authRoutes = require('./auth');
 const transactionRoutes = require('./transactions');
 const categoryRoutes = require('./categories');
 const budgetRoutes = require('./budgets');
-const annualBudgetRoutes = require('./annualBudgets');
+const annualBudgetRoutes = require('./annualBudgets'); // Keep for backward compatibility
+const monthlyBudgetRoutes = require('./monthlyBudgets');
+const yearlyPlanRoutes = require('./yearlyPlans');
 const dashboardRoutes = require('./dashboard');
 
 // Mount routes
@@ -14,7 +16,9 @@ router.use('/auth', authRoutes);
 router.use('/transactions', transactionRoutes);
 router.use('/categories', categoryRoutes);
 router.use('/budgets', budgetRoutes);
-router.use('/annual-budgets', annualBudgetRoutes);
+router.use('/annual-budgets', annualBudgetRoutes); // Keep for backward compatibility
+router.use('/monthly-budgets', monthlyBudgetRoutes);
+router.use('/yearly-plans', yearlyPlanRoutes);
 router.use('/dashboard', dashboardRoutes);
 
 // Health check endpoint

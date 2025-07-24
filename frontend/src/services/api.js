@@ -277,7 +277,55 @@ export const authAPI = {
   changePassword: (data) => api.put('/auth/change-password', data),
 };
 
-// Annual Budget API
+// Monthly Budget API (New primary budget system)
+export const monthlyBudgetAPI = {
+  // Get monthly budget for specific month
+  getMonthlyBudget: (year, month) => api.get(`/monthly-budgets/${year}/${month}`),
+  
+  // Create or update monthly budget
+  createOrUpdateBudget: (data) => api.post('/monthly-budgets', data),
+  
+  // Generate monthly budget recommendations
+  generateRecommendations: (data) => api.post('/monthly-budgets/recommendations', data),
+  
+  // Get monthly budget performance
+  getBudgetPerformance: (year, month) => api.get(`/monthly-budgets/${year}/${month}/performance`),
+  
+  // Get all monthly budgets for a year
+  getYearlyMonthlyBudgets: (year) => api.get(`/monthly-budgets/${year}`),
+  
+  // Sync monthly budget with transactions
+  syncWithTransactions: (year, month) => api.post(`/monthly-budgets/${year}/${month}/sync`),
+  
+  // Delete monthly budget
+  deleteMonthlyBudget: (year, month) => api.delete(`/monthly-budgets/${year}/${month}`)
+};
+
+// Yearly Plan API (For annual overview and planning)
+export const yearlyPlanAPI = {
+  // Get yearly plan overview
+  getYearlyPlan: (year) => api.get(`/yearly-plans/${year}`),
+  
+  // Get yearly financial summary
+  getYearlySummary: (year) => api.get(`/yearly-plans/${year}/summary`),
+  
+  // Update yearly goals
+  updateYearlyGoals: (year, goals) => api.put(`/yearly-plans/${year}/goals`, { goals }),
+  
+  // Create monthly budget template
+  createMonthlyTemplate: (year, templateData) => api.post(`/yearly-plans/${year}/template`, { templateData }),
+  
+  // Update yearly settings
+  updateYearlySettings: (year, settings) => api.put(`/yearly-plans/${year}/settings`, { settings }),
+  
+  // Get category trends
+  getCategoryTrends: (year) => api.get(`/yearly-plans/${year}/trends`),
+  
+  // Delete yearly plan
+  deleteYearlyPlan: (year) => api.delete(`/yearly-plans/${year}`)
+};
+
+// Annual Budget API (Kept for backward compatibility)
 export const annualBudgetAPI = {
   // Get annual budget for specific year
   getAnnualBudget: (year) => api.get(`/annual-budgets/${year}`),

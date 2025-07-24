@@ -1,35 +1,16 @@
-import React, { useState, useEffect } from 'react';
-import { ChevronRight, ChevronLeft, Info, Grid3X3, List } from 'lucide-react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { Check, ChevronRight, ChevronLeft, Info, Grid3X3, List } from 'luci  const toggleCategory = useCallback((categoryName) => {
+    // Immediate flag check to prevent double execution
+    if (isProcessingRef.current) {
+      console.log('🚫 Already processing, ignoring category toggle:', categoryName);
+      return;
+    }
+    
+    isProcessingRef.current = true;
+    console.log('🔄 Toggling category:', categoryName);;
 import Button from '../../../common/Button/Button';
 
-// Simple Switch Component
-const Switch = ({ checked, onChange, id, name }) => {
-  return (
-    <label htmlFor={id} className="inline-flex items-center cursor-pointer">
-      <input
-        type="checkbox"
-        id={id}
-        name={name}
-        checked={checked}
-        onChange={onChange}
-        className="sr-only"
-      />
-      <div
-        className={`relative inline-block w-11 h-6 transition-all duration-200 ease-in-out rounded-full ${
-          checked ? 'bg-blue-600' : 'bg-gray-300 dark:bg-gray-600'
-        }`}
-      >
-        <div
-          className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow-md transition-transform duration-200 ease-in-out ${
-            checked ? 'translate-x-5' : 'translate-x-0'
-          }`}
-        />
-      </div>
-    </label>
-  );
-};
-
-// Default categories and subcategories based on the template - Updated
+// Default categories and subcategories based on the template
 const DEFAULT_CATEGORIES = [
   {
     name: 'Housing',
@@ -143,6 +124,7 @@ const CategorySelection = ({
   const [selectedCategories, setSelectedCategories] = useState({});
   const [expandedCategories, setExpandedCategories] = useState({});
   const [viewMode, setViewMode] = useState('grouped'); // 'grouped' or 'list'
+  const isProcessingRef = useRef(false);
 
   // Initialize selected categories from wizard data or set defaults
   useEffect(() => {
@@ -171,25 +153,28 @@ const CategorySelection = ({
       }
     });
     setExpandedCategories(expanded);
-  }, []); // Only run on mount
+  }, [wizardData.selectedCategories]);
 
-  const toggleCategory = (categoryName) => {
-    console.log('Toggling category:', categoryName);
+  const toggleCategory = useCallback((categoryName) => {
+    const now = Date.now();
+    if (now - lastToggleTime.current < 500) { // Prevent rapid successive calls
+      console.log('� Preventing rapid toggle for category:', categoryName);
+      return;
+    }
+    lastToggleTime.current = now;
+    
+    console.log('🔄 Toggling category:', categoryName);
+    
     setSelectedCategories(prev => {
       const newSelected = { ...prev };
+      const isCurrentlySelected = newSelected[categoryName]?.selected || false;
+      console.log('📊 Current state for', categoryName, ':', isCurrentlySelected);
       
       if (!newSelected[categoryName]) {
         newSelected[categoryName] = { selected: false, subcategories: {} };
       }
       
-      // Deep clone subcategories
-      newSelected[categoryName] = {
-        ...newSelected[categoryName],
-        subcategories: { ...newSelected[categoryName].subcategories }
-      };
-
-      const wasSelected = newSelected[categoryName].selected;
-      newSelected[categoryName].selected = !wasSelected;
+      newSelected[categoryName].selected = !isCurrentlySelected;
       
       // If deselecting category, deselect all subcategories
       if (!newSelected[categoryName].selected) {
@@ -208,12 +193,21 @@ const CategorySelection = ({
         }
       }
       
+      console.log('✅ New state for', categoryName, ':', newSelected[categoryName]);
       return newSelected;
     });
-  };
+  }, []);
 
-  const toggleSubcategory = (categoryName, subcategoryName) => {
-    console.log('Toggling subcategory:', subcategoryName);
+  const toggleSubcategory = useCallback((categoryName, subcategoryName) => {
+    const now = Date.now();
+    if (now - lastToggleTime.current < 500) { // Prevent rapid successive calls
+      console.log('� Preventing rapid toggle for subcategory:', categoryName, '->', subcategoryName);
+      return;
+    }
+    lastToggleTime.current = now;
+    
+    console.log('🔄 Toggling subcategory:', categoryName, '->', subcategoryName);
+    
     setSelectedCategories(prev => {
       const newSelected = { ...prev };
       
@@ -221,22 +215,17 @@ const CategorySelection = ({
         newSelected[categoryName] = { selected: false, subcategories: {} };
       }
       
-      // Deep clone subcategories
-      newSelected[categoryName] = {
-        ...newSelected[categoryName],
-        subcategories: { ...newSelected[categoryName].subcategories }
-      };
-
-      const wasSelected = newSelected[categoryName].subcategories[subcategoryName] || false;
-      newSelected[categoryName].subcategories[subcategoryName] = !wasSelected;
+      const currentValue = newSelected[categoryName].subcategories[subcategoryName] || false;
+      newSelected[categoryName].subcategories[subcategoryName] = !currentValue;
       
       // Check if any subcategories are selected to determine category selection
       const hasSelectedSubcategories = Object.values(newSelected[categoryName].subcategories).some(selected => selected);
       newSelected[categoryName].selected = hasSelectedSubcategories;
       
+      console.log('✅ New subcategory state:', subcategoryName, '=', !currentValue);
       return newSelected;
     });
-  };
+  }, []);
 
   const toggleCategoryExpansion = (categoryName) => {
     setExpandedCategories(prev => ({
@@ -382,17 +371,29 @@ const CategorySelection = ({
               <div className="p-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-3">
-                    {/* Category Switch */}
-                    <div className="flex items-center space-x-3">
-                      <Switch
-                        checked={isSelected}
-                        onChange={toggleCategory.bind(null, category.name)}
-                        id={`category-${category.name}`}
-                        name={`category-${category.name}`}
-                      />
-                      <span className="text-sm font-medium text-gray-600 dark:text-gray-400">
-                        {isSelected ? 'Selected' : 'Not selected'}
-                      </span>
+                    {/* Category Checkbox */}
+                    <div 
+                      className="flex items-center cursor-pointer"
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                      }}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        e.nativeEvent.stopImmediatePropagation();
+                        toggleCategory(category.name);
+                      }}
+                    >
+                      <div
+                        className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-all duration-200 ${
+                          isSelected
+                            ? 'bg-blue-600 border-blue-600 text-white shadow-sm'
+                            : 'border-gray-300 dark:border-gray-600 hover:border-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20'
+                        }`}
+                      >
+                        {isSelected && <Check className="h-3 w-3 stroke-2" />}
+                      </div>
                     </div>
                     
                     {/* Category Info */}
@@ -443,25 +444,39 @@ const CategorySelection = ({
                       return (
                         <div
                           key={subcategory.name}
-                          className="flex items-center justify-between p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                          className="flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer group transition-colors"
+                          onMouseDown={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                          }}
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            e.nativeEvent.stopImmediatePropagation();
+                            toggleSubcategory(category.name, subcategory.name);
+                          }}
                         >
-                          <div className="flex items-center space-x-3">
-                            <Switch
-                              checked={isSubSelected}
-                              onChange={toggleSubcategory.bind(null, category.name, subcategory.name)}
-                              id={`subcategory-${category.name}-${subcategory.name}`}
-                              name={`subcategory-${category.name}-${subcategory.name}`}
-                            />
-                            <div className="flex-1">
-                              <span className="text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center space-x-2">
-                                <span>{subcategory.name}</span>
-                                {subcategory.essential && (
-                                  <span className="px-1.5 py-0.5 text-xs bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded">
-                                    Essential
-                                  </span>
-                                )}
-                              </span>
-                            </div>
+                          {/* Subcategory Checkbox */}
+                          <div
+                            className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-all duration-200 ${
+                              isSubSelected
+                                ? 'bg-blue-600 border-blue-600 text-white shadow-sm'
+                                : 'border-gray-300 dark:border-gray-600 group-hover:border-blue-400 group-hover:bg-blue-50 dark:group-hover:bg-blue-900/20'
+                            }`}
+                          >
+                            {isSubSelected && <Check className="h-2.5 w-2.5 stroke-2" />}
+                          </div>
+                          
+                          {/* Subcategory Label */}
+                          <div className="flex-1">
+                            <span className="text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center space-x-2">
+                              <span>{subcategory.name}</span>
+                              {subcategory.essential && (
+                                <span className="px-1.5 py-0.5 text-xs bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded">
+                                  Essential
+                                </span>
+                              )}
+                            </span>
                           </div>
                         </div>
                       );

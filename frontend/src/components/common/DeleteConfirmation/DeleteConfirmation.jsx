@@ -151,7 +151,7 @@ const DeleteConfirmation = ({
                   Are you sure you want to delete this {itemType}?
                 </h4>
                 <p className="text-gray-600 dark:text-gray-300">
-                  You're about to delete the <strong>{itemName}</strong> annual budget.
+                  You're about to delete the <strong>{itemName}</strong> budget.
                 </p>
               </div>
 
