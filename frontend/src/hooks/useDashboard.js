@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { dashboardAPI, transactionAPI, budgetAPI } from '../services/api';
+import { dashboardAPI, transactionAPI, budgetAPI, analyticsAPI } from '../services/api';
 import { toast } from 'react-hot-toast';
 
 export const useDashboard = () => {

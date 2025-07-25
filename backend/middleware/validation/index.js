@@ -246,11 +246,15 @@ const transactionValidation = {
       .isNumeric()
       .withMessage('Amount must be a number')
       .custom((value) => {
-        if (parseFloat(value) === 0) {
+        const numValue = parseFloat(value);
+        if (numValue === 0) {
           throw new Error('Amount cannot be zero');
         }
-        if (Math.abs(parseFloat(value)) > 1000000) {
-          throw new Error('Amount cannot exceed 1,000,000');
+        if (Math.abs(numValue) > 999999999) { // Increased to 999 million
+          throw new Error('Amount cannot exceed 999,999,999');
+        }
+        if (Math.abs(numValue) < 0.01) {
+          throw new Error('Amount must be at least 0.01');
         }
         return true;
       }),
@@ -362,11 +366,15 @@ const transactionValidation = {
       .isNumeric()
       .withMessage('Amount must be a number')
       .custom((value) => {
-        if (parseFloat(value) === 0) {
+        const numValue = parseFloat(value);
+        if (numValue === 0) {
           throw new Error('Amount cannot be zero');
         }
-        if (Math.abs(parseFloat(value)) > 1000000) {
-          throw new Error('Amount cannot exceed 1,000,000');
+        if (Math.abs(numValue) > 999999999) { // Increased to 999 million
+          throw new Error('Amount cannot exceed 999,999,999');
+        }
+        if (Math.abs(numValue) < 0.01) {
+          throw new Error('Amount must be at least 0.01');
         }
         return true;
       }),

@@ -92,7 +92,21 @@ const TransactionsPage = () => {
       fetchTransactions();
     } catch (error) {
       console.error('Error adding transaction:', error);
-      toast.error('Failed to add transaction');
+      
+      // Handle validation errors
+      if (error.response?.status === 400 && error.response?.data?.errors) {
+        const validationErrors = error.response.data.errors;
+        if (Array.isArray(validationErrors) && validationErrors.length > 0) {
+          // Show the first validation error
+          toast.error(validationErrors[0].message || 'Validation failed');
+        } else {
+          toast.error(error.response.data.message || 'Validation failed');
+        }
+      } else if (error.response?.data?.message) {
+        toast.error(error.response.data.message);
+      } else {
+        toast.error('Failed to add transaction');
+      }
     }
   };
 

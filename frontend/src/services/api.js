@@ -352,4 +352,67 @@ export const annualBudgetAPI = {
   deleteAnnualBudget: (year) => api.delete(`/annual-budgets/${year}`)
 };
 
+// Analytics API functions
+export const analyticsAPI = {
+  // Get spending analytics by category
+  getSpendingByCategory: (params = {}) => {
+    const { startDate, endDate, period = 'thisMonth' } = params;
+    let url = '/analytics/spending-by-category';
+    const queryParams = new URLSearchParams();
+    
+    if (startDate) queryParams.append('startDate', startDate);
+    if (endDate) queryParams.append('endDate', endDate);
+    queryParams.append('period', period);
+    
+    if (queryParams.toString()) {
+      url += `?${queryParams.toString()}`;
+    }
+    
+    return api.get(url);
+  },
+  
+  // Get income analytics by source
+  getIncomeBySource: (params = {}) => {
+    const { startDate, endDate, period = 'thisMonth' } = params;
+    let url = '/analytics/income-by-source';
+    const queryParams = new URLSearchParams();
+    
+    if (startDate) queryParams.append('startDate', startDate);
+    if (endDate) queryParams.append('endDate', endDate);
+    queryParams.append('period', period);
+    
+    if (queryParams.toString()) {
+      url += `?${queryParams.toString()}`;
+    }
+    
+    return api.get(url);
+  },
+  
+  // Get monthly trends
+  getMonthlyTrends: (params = {}) => {
+    const { year = new Date().getFullYear(), months = 6 } = params;
+    return api.get(`/analytics/monthly-trends?year=${year}&months=${months}`);
+  },
+  
+  // Get budget vs actual comparison
+  getBudgetComparison: (params = {}) => {
+    const { year = new Date().getFullYear(), month } = params;
+    let url = `/annual-budgets/${year}/performance`;
+    if (month) url += `?month=${month}`;
+    return api.get(url);
+  },
+  
+  // Get financial summary
+  getFinancialSummary: (params = {}) => {
+    const { period = 'thisMonth' } = params;
+    return api.get(`/analytics/summary?period=${period}`);
+  },
+  
+  // Get savings rate analysis
+  getSavingsAnalysis: (params = {}) => {
+    const { year = new Date().getFullYear() } = params;
+    return api.get(`/analytics/savings?year=${year}`);
+  }
+};
+
 export default api;

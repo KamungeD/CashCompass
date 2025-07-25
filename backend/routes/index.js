@@ -10,6 +10,7 @@ const annualBudgetRoutes = require('./annualBudgets'); // Keep for backward comp
 const monthlyBudgetRoutes = require('./monthlyBudgets');
 const yearlyPlanRoutes = require('./yearlyPlans');
 const dashboardRoutes = require('./dashboard');
+const analyticsRoutes = require('./analytics');
 
 // Mount routes
 router.use('/auth', authRoutes);
@@ -20,6 +21,7 @@ router.use('/annual-budgets', annualBudgetRoutes); // Keep for backward compatib
 router.use('/monthly-budgets', monthlyBudgetRoutes);
 router.use('/yearly-plans', yearlyPlanRoutes);
 router.use('/dashboard', dashboardRoutes);
+router.use('/analytics', analyticsRoutes);
 
 // Health check endpoint
 router.get('/health', (req, res) => {

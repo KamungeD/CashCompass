@@ -24,7 +24,7 @@ const Navbar = () => {
   const navigation = [
     { name: 'Dashboard', href: '/dashboard', icon: Home },
     { name: 'Transactions', href: '/transactions', icon: CreditCard },
-    { name: 'Budgets', href: '/budgets', icon: Target },
+    // { name: 'Budgets', href: '/budgets', icon: Target },
     { name: 'Monthly Budget', href: '/monthly-budget', icon: Calendar },
     { name: 'Analytics', href: '/analytics', icon: PieChart },
   ];

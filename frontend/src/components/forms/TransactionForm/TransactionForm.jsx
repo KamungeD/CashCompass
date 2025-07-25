@@ -9,9 +9,13 @@ import { format } from 'date-fns';
 
 const schema = yup.object({
   type: yup.string().oneOf(['income', 'expense']).required('Transaction type is required'),
-  amount: yup.number().positive('Amount must be positive').required('Amount is required'),
+  amount: yup.number()
+    .positive('Amount must be positive')
+    .min(0.01, 'Amount must be at least 0.01')
+    .max(999999999, 'Amount cannot exceed 999,999,999')
+    .required('Amount is required'),
   category: yup.string().required('Category is required'),
-  description: yup.string().max(200, 'Description must be less than 200 characters'),
+  description: yup.string().max(500, 'Description must be less than 500 characters'),
   date: yup.date().required('Date is required'),
   paymentMethod: yup.string()
 });
