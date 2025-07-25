@@ -428,14 +428,37 @@ exports.generateMonthlyBudgetRecommendations = async (req, res) => {
     }
 
     // Generate recommendations (monthly-focused)
-    const categories = generateSelectedCategoryBudgets(
+    let categories = generateSelectedCategoryBudgets(
       selectedCategories, 
       income, // This is monthly income
       priority,
       profile
     );
 
-    const totalAllocated = categories.reduce((sum, cat) => sum + cat.monthlyBudget, 0);
+    // Debug logs before scaling
+    console.log('DEBUG: categories before scaling', categories);
+    let totalAllocated = categories.reduce((sum, cat) => sum + cat.monthlyBudget, 0);
+    console.log('DEBUG: totalAllocated before scaling', totalAllocated);
+    console.log('DEBUG: income', income);
+
+    // --- Scaling logic: always scale allocations to 100% of income ---
+    if (totalAllocated !== income && totalAllocated > 0) {
+      const scaleFactor = income / totalAllocated;
+      categories = categories.map(cat => {
+        const scaledMonthly = Math.round(cat.monthlyBudget * scaleFactor);
+        return {
+          ...cat,
+          monthlyBudget: scaledMonthly,
+          annualBudget: scaledMonthly * 12
+        };
+      });
+      totalAllocated = categories.reduce((sum, cat) => sum + cat.monthlyBudget, 0);
+    }
+    // Debug logs after scaling
+    console.log('DEBUG: categories after scaling', categories);
+    console.log('DEBUG: totalAllocated after scaling', totalAllocated);
+    // --- End scaling logic ---
+
     const remainingBudget = income - totalAllocated;
 
     res.json({

@@ -709,14 +709,29 @@ exports.generateBudgetRecommendations = async (req, res) => {
     });
 
     // Generate category recommendations based on selected categories
-    const categories = generateSelectedCategoryBudgets(
+    let categories = generateSelectedCategoryBudgets(
       selectedCategories, 
       essentialAmount, 
       lifestyleAmount, 
       savingsAmount
     );
 
-    const totalAllocated = categories.reduce((sum, cat) => sum + cat.annualBudget, 0);
+    // --- Scaling logic: always scale allocations to 100% of annual income ---
+    let totalAllocated = categories.reduce((sum, cat) => sum + cat.annualBudget, 0);
+    if (totalAllocated !== annualIncome && totalAllocated > 0) {
+      const scaleFactor = annualIncome / totalAllocated;
+      categories = categories.map(cat => {
+        const scaledAnnual = Math.round(cat.annualBudget * scaleFactor);
+        return {
+          ...cat,
+          annualBudget: scaledAnnual,
+          monthlyBudget: Math.round(scaledAnnual / 12)
+        };
+      });
+      totalAllocated = categories.reduce((sum, cat) => sum + cat.annualBudget, 0);
+    }
+    // --- End scaling logic ---
+
     const allocationPercentage = (totalAllocated / annualIncome) * 100;
 
     console.log('✅ Final allocation:', {

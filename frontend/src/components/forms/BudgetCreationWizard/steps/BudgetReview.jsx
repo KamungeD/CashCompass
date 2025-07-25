@@ -15,86 +15,90 @@ import CurrencyInput from '../../../common/CurrencyInput/CurrencyInput';
 import { formatCurrency } from '../../../../utils/helpers';
 
 const BudgetReview = ({ wizardData, updateWizardData, goToNextStep, goToPreviousStep }) => {
+  // Debug output to help diagnose allocation bug
+  console.log('DEBUG: wizardData.selectedCategories', wizardData.selectedCategories);
+  console.log('DEBUG: wizardData.budget.categories', wizardData.budget?.categories);
   const [budget, setBudget] = useState(wizardData.budget || { categories: [], totalIncome: 0, totalAllocated: 0 });
   const [viewMode, setViewMode] = useState('monthly'); // 'monthly' or 'annual'
   const [editingCategory, setEditingCategory] = useState(null);
 
-  const defaultCategories = {
-    'Essential': [
-      { name: 'Housing', subcategories: ['Rent/Mortgage', 'Utilities', 'Insurance'], isEssential: true },
-      { name: 'Transportation', subcategories: ['Car Payment', 'Gas', 'Insurance', 'Public Transit'], isEssential: true },
-      { name: 'Food', subcategories: ['Groceries', 'Dining Out'], isEssential: true },
-      { name: 'Healthcare', subcategories: ['Insurance', 'Medical Expenses'], isEssential: true },
-      { name: 'Debt Payments', subcategories: ['Credit Cards', 'Student Loans'], isEssential: true }
-    ],
-    'Lifestyle': [
-      { name: 'Entertainment', subcategories: ['Movies', 'Subscriptions', 'Hobbies'], isEssential: false },
-      { name: 'Personal Care', subcategories: ['Gym', 'Grooming', 'Clothing'], isEssential: false },
-      { name: 'Gifts & Charity', subcategories: ['Gifts', 'Donations'], isEssential: false },
-      { name: 'Miscellaneous', subcategories: ['Fun Money', 'Unexpected'], isEssential: false }
-    ],
-    'Savings & Goals': [
-      { name: 'Emergency Fund', subcategories: ['Emergency Savings'], isEssential: true },
-      { name: 'Short-term Goals', subcategories: ['Vacation', 'Electronics'], isEssential: false },
-      { name: 'Long-term Goals', subcategories: ['House Down Payment', 'Car'], isEssential: false }
-    ]
-  };
-
-  useEffect(() => {
-    // If budget is empty, initialize with default categories
-    if (!budget.categories || budget.categories.length === 0) {
-      initializeDefaultBudget();
-    } else {
-      // Ensure all existing categories have unique IDs
-      const categoriesWithIds = budget.categories.map((category, index) => ({
-        ...category,
-        id: category.id || `existing-${Date.now()}-${index}`
-      }));
-      
-      if (categoriesWithIds.some((cat, idx) => cat.id !== budget.categories[idx]?.id)) {
-        setBudget(prev => ({
-          ...prev,
-          categories: categoriesWithIds
-        }));
-      }
-    }
-  }, []);
-
-  const initializeDefaultBudget = () => {
-    const categories = [];
-    let idCounter = 0;
-    
-    Object.entries(defaultCategories).forEach(([groupName, groupCategories]) => {
-      groupCategories.forEach(cat => {
-        cat.subcategories.forEach(subcat => {
-          categories.push({
-            id: `${Date.now()}-${idCounter++}`,
-            category: cat.name,
-            subcategory: subcat,
-            monthlyBudget: 0,
-            annualBudget: 0,
-            isEssential: cat.isEssential,
-            isMonthly: true // Default to monthly
-          });
-        });
+  // Helper to get only selected categories/subcategories from wizardData.selectedCategories
+  const getSelectedCategoryEntries = () => {
+    const selected = wizardData.selectedCategories || {};
+    const entries = [];
+    Object.entries(selected).forEach(([catName, catData]) => {
+      if (!catData.selected) return;
+      Object.entries(catData.subcategories || {}).forEach(([subcatName, isSelected]) => {
+        if (isSelected) {
+          entries.push({ category: catName, subcategory: subcatName });
+        }
       });
     });
+    return entries;
+  };
 
+  // Only used for custom budgets (not recommendations)
+  const initializeCustomBudget = () => {
+    const selectedEntries = getSelectedCategoryEntries();
+    let idCounter = 0;
+    const categories = selectedEntries.map(({ category, subcategory }) => ({
+      id: `${Date.now()}-${idCounter++}`,
+      category,
+      subcategory,
+      monthlyBudget: 0,
+      annualBudget: 0,
+      isEssential: false, // Could be improved by looking up essential flag if needed
+      isMonthly: true
+    }));
     setBudget(prev => ({
       ...prev,
       categories
     }));
   };
 
-  const calculateTotalAllocated = () => {
-    return budget.categories.reduce((total, cat) => {
-      // Always calculate based on annual budget for consistency
-      return total + (cat.annualBudget || 0);
-    }, 0);
+  useEffect(() => {
+    // If using recommendations, do not re-initialize (backend already filtered)
+    if (wizardData.useRecommendations) {
+      // Ensure all categories have unique IDs for editing
+      if (budget.categories && budget.categories.length > 0) {
+        const categoriesWithIds = budget.categories.map((category, index) => ({
+          ...category,
+          id: category.id || `existing-${Date.now()}-${index}`
+        }));
+        if (categoriesWithIds.some((cat, idx) => cat.id !== budget.categories[idx]?.id)) {
+          setBudget(prev => ({
+            ...prev,
+            categories: categoriesWithIds
+          }));
+        }
+      }
+    } else {
+      // Custom budget: only initialize if categories are empty
+      if (!budget.categories || budget.categories.length === 0) {
+        initializeCustomBudget();
+      }
+    }
+    // eslint-disable-next-line
+  }, []);
+
+  // Filter categories for display/calculation:
+  // - If recommendations: use all in budget.categories (already filtered by backend)
+  // - If custom: filter to only those matching selectedCategories
+  const getFilteredCategories = () => {
+    if (wizardData.useRecommendations) {
+      return budget.categories || [];
+    }
+    // Custom: filter to only selected
+    const selectedEntries = getSelectedCategoryEntries();
+    return (budget.categories || []).filter(cat =>
+      selectedEntries.some(sel => sel.category === cat.category && sel.subcategory === cat.subcategory)
+    );
   };
 
-  const calculateTotalAllocatedForView = () => {
-    return budget.categories.reduce((total, cat) => {
+  const filteredCategories = getFilteredCategories();
+
+  const calculateTotalAllocated = () => {
+    return filteredCategories.reduce((total, cat) => {
       if (viewMode === 'monthly') {
         return total + (cat.monthlyBudget || 0);
       } else {
@@ -109,14 +113,12 @@ const BudgetReview = ({ wizardData, updateWizardData, goToNextStep, goToPrevious
       categories: prev.categories.map(cat => {
         if (cat.id === categoryId) {
           const updatedCat = { ...cat, [field]: parseFloat(value) || 0 };
-          
           // Auto-calculate monthly/annual
           if (field === 'monthlyBudget') {
             updatedCat.annualBudget = updatedCat.monthlyBudget * 12;
           } else if (field === 'annualBudget') {
             updatedCat.monthlyBudget = updatedCat.annualBudget / 12;
           }
-          
           return updatedCat;
         }
         return cat;
@@ -135,12 +137,10 @@ const BudgetReview = ({ wizardData, updateWizardData, goToNextStep, goToPrevious
       isMonthly: true,
       isCustom: true
     };
-    
     setBudget(prev => ({
       ...prev,
       categories: [...prev.categories, newCategory]
     }));
-    
     setEditingCategory(newCategory.id);
   };
 
@@ -154,29 +154,40 @@ const BudgetReview = ({ wizardData, updateWizardData, goToNextStep, goToPrevious
   const updateCategoryName = (categoryId, field, value) => {
     setBudget(prev => ({
       ...prev,
-      categories: prev.categories.map(cat => 
+      categories: prev.categories.map(cat =>
         cat.id === categoryId ? { ...cat, [field]: value } : cat
       )
     }));
   };
 
-  const groupedCategories = budget.categories.reduce((groups, category) => {
+  // Grouping logic for display (unchanged, but use filteredCategories)
+  const groupedCategories = filteredCategories.reduce((groups, category) => {
     const group = category.isEssential ? 'Essential' : 
                   category.category === 'Emergency Fund' || category.category.includes('Goals') ? 'Savings & Goals' : 
                   'Lifestyle';
-    
     if (!groups[group]) groups[group] = [];
     groups[group].push(category);
     return groups;
   }, {});
 
   const totalAllocated = calculateTotalAllocated();
-  const totalAllocatedForView = calculateTotalAllocatedForView();
-  
+  const totalAllocatedForView = calculateTotalAllocated();
   // Calculate remaining income and percentage based on view mode
-  const incomeForView = viewMode === 'monthly' ? wizardData.budget.totalIncome / 12 : wizardData.budget.totalIncome;
+  const incomeForView = viewMode === 'monthly' ? wizardData.budget.totalIncome : wizardData.budget.totalIncome * 12;
   const remainingIncome = incomeForView - totalAllocatedForView;
-  const allocationPercentage = (totalAllocatedForView / incomeForView) * 100;
+  const allocationPercentage = incomeForView > 0 ? (totalAllocatedForView / incomeForView) * 100 : 0;
+
+  // Debug logging to verify calculations
+  console.log('DEBUG: BudgetReview calculations:', {
+    viewMode,
+    totalAllocated,
+    totalAllocatedForView,
+    incomeForView,
+    remainingIncome,
+    allocationPercentage,
+    monthlyIncome: wizardData.budget.totalIncome,
+    annualIncome: wizardData.budget.totalIncome * 12
+  });
 
   const getStatusColor = () => {
     if (allocationPercentage <= 100) return 'text-green-600 dark:text-green-400';
@@ -186,6 +197,7 @@ const BudgetReview = ({ wizardData, updateWizardData, goToNextStep, goToPrevious
   const handleContinue = () => {
     updateWizardData('budget', {
       ...budget,
+      categories: filteredCategories, // Save only filtered categories
       totalAllocated
     });
     goToNextStep();
