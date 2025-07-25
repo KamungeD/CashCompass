@@ -1,31 +1,16 @@
-# CashCompass - Database Schema Documentation
-
-**Author:** Duncan Kamunge ([@KamungeD](https://github.com/KamungeD))  
-**Project:** Personal Finance Management Application  
-**Database:** MongoDB  
-**Version:** 1.0  
-**Last Updated:** July 2025  
-
----
+# CashCompass - Database Schema
 
 ## 📋 Database Overview
 
-CashCompass uses MongoDB as the primary database with Mongoose ODM for schema validation and relationships. The database is designed for optimal performance with proper indexing and data relationships.
+CashCompass uses MongoDB with Mongoose ODM for schema validation and relationships.
 
-### 🏗️ Database Architecture
-- **Database Name:** `cashcompass`
-- **Collections:** 4 primary collections
-- **Relationships:** User-centric with referential integrity
-- **Indexing Strategy:** Compound indexes for optimal query performance
-- **Data Validation:** Schema-level validation with Mongoose
-
----
+### Collections
+- **users** - User account information and authentication
+- **transactions** - Financial transactions
+- **budgets** - Budget definitions and tracking
+- **categories** - Transaction categorization
 
 ## 👤 User Collection
-
-### Collection Name: `users`
-
-The User collection stores user account information, authentication data, and preferences.
 
 #### Schema Definition:
 ```javascript

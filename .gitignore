@@ -26,6 +26,10 @@ DEPLOYMENT-GUIDE.md
 # Week assignment files
 Week8-Assignment.md
 
+# Development documentation (not needed for final submission)
+docs/REQUIREMENTS.md
+docs/USER_STORIES.md
+
 # Implementation planning files
 NEW-USER-ANNUAL-BUDGET-IMPLEMENTATION.md
 
@@ -292,3 +296,4 @@ dev-scripts/
 
 # Keep project structure
 !.gitkeep
+.vercel

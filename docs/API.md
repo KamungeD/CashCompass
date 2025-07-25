@@ -1,24 +1,13 @@
 # CashCompass - API Documentation
 
-**Author:** Duncan Kamunge ([@KamungeD](https://github.com/KamungeD))  
-**Project:** Personal Finance Management Application  
-**API Version:** v1  
-**Base URL:** `https://cashcompass-api.onrender.com/api` (Production) | `http://localhost:5000/api` (Development)  
-**Last Updated:** July 2025  
+**Base URL:** `https://cashcompass-backend-jp53.onrender.com/api/v1`
 
----
-
-## 📋 API Overview
-
-CashCompass provides a RESTful API for managing personal finances. All endpoints require proper authentication except for registration and login. The API follows standard HTTP methods and status codes.
-
-### 🔐 Authentication
+## 🔐 Authentication
 - **Type:** JWT (JSON Web Tokens)
 - **Header:** `Authorization: Bearer <token>`
 - **Token Expiration:** 30 days
-- **Refresh:** Automatic on valid requests
 
-### 📊 Response Format
+## 📊 Response Format
 All API responses follow a consistent format:
 
 ```json

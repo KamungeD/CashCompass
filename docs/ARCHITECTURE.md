@@ -1,10 +1,5 @@
 # CashCompass - System Architecture
 
-**Author:** Duncan Kamunge ([@KamungeD](https://github.com/KamungeD))  
-**Last Updated:** July 2025  
-
----
-
 ## 🏗️ High-Level Architecture
 
 ```
@@ -20,8 +15,8 @@
         │                        │                        │
         │                        │                        │
     ┌───▼────┐              ┌────▼────┐              ┌────▼────┐
-    │Vercel/ │              │ Render/ │              │MongoDB  │
-    │Netlify │              │Railway  │              │ Atlas   │
+    │ Vercel │              │ Render  │              │MongoDB  │
+    │        │              │         │              │ Atlas   │
     └────────┘              └─────────┘              └─────────┘
 ```
 
